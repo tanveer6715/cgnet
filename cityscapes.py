@@ -4,6 +4,7 @@ import cv2
 
 import os.path as osp 
 import numpy as np 
+import cityscapesscripts.helpers.labels as CSLabels
 
 from glob import glob 
 
@@ -76,6 +77,13 @@ class CityscapesDatset:
 
     def prepare_img(self, idx): 
 
+        """ Read image from the dataset directory
+        Args:
+                        
+        Returns:
+            
+        """
+
         img_filename = self.img_infos[idx]['filename']
         img_prefix = img_filename.split('_')[0]
 
@@ -87,28 +95,41 @@ class CityscapesDatset:
 
     def prepare_seg_mask(self, idx): 
 
+        """ Read segmentation mask from the annotation directory
+        Args:
+                        
+        Returns:
+            
+        """
+
         seg_filename = self.img_infos[idx]['ann']['seg_map']
         seg_prefix = seg_filename.split('_')[0]
 
         seg_path = osp.join(self.ann_dir, seg_prefix, seg_filename)
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
 
-        return seg
+        return CityscapesDatset._convert_to_label_id(seg)
 
+    @staticmethod
+    def _convert_to_label_id(seg):
+        """Convert trainId to id for cityscapes."""
+        seg_copy = seg.copy()
+        for label in CSLabels.labels:
+            # print(label.name)
+            seg_copy[seg == label.id] = label.trainId
+        return seg_copy
+            
+    
 
     def __getitem__(self, idx):
         
-        """
-        Get training/test data after pipeline.
+        """Get training/test data after pipeline.
 
         Args:
             idx (int): Index of data.
         Returns:
             dict: Training/test data (with annotation if `test_mode` is set
                 False).
-
-        Code Reference : 
-            [1] https://github.com/open-mmlab/mmsegmentation
         """
         data = {}
         data['image'] = self.prepare_img(idx)
@@ -121,7 +142,9 @@ def test():
     data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
     img_infos = cityscapes_dataset.img_infos
-    print(cityscapes_dataset[0]['segmentation_mask'].shape)
+    for data in cityscapes_dataset: 
+        print(np.unique(data['segmentation_mask'])[-2])
+    
     return None 
 
 if __name__ == "__main__" : 
