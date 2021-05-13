@@ -1,5 +1,6 @@
 
 import os
+import cv2 
 
 import os.path as osp 
 import numpy as np 
@@ -15,7 +16,7 @@ class CityscapesDatset:
     fixed to '_gtFine_labelTrainIds.png' for Cityscapes dataset.
 
     Code Reference : 
-        [1] https://github.com/open-mmlab/mmsegmentation/blob/master/mmseg/datasets/cityscapes.py
+        [1] https://github.com/open-mmlab/mmsegmentation
     """
 
     CLASSES = ('road', 'sidewalk', 'building', 'wall', 'fence', 'pole',
@@ -29,17 +30,19 @@ class CityscapesDatset:
                [255, 0, 0], [0, 0, 142], [0, 0, 70], [0, 60, 100],
                [0, 80, 100], [0, 0, 230], [119, 11, 32]]
 
-    def __init__(self, data_dir, test_mode = False):
+    def __init__(self, data_dir, data_type = 'train'):
 
         self.data_dir = data_dir
-        self.img_dir = osp.join(data_dir, 'leftImg8bit_trainvaltest/leftImg8bit')
-        self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine')
+        self.img_dir = osp.join(data_dir, 'leftImg8bit_trainvaltest/leftImg8bit', data_type)
+        self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine', data_type)
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
 
-        
+        # load annotations
+        self.img_infos = self.load_img_infos()
 
-    def load_annotations(self): 
+        
+    def load_img_infos(self): 
 
         """Load annotation from directory.
         Args:
@@ -52,15 +55,14 @@ class CityscapesDatset:
             list[dict]: All image info of dataset.
 
         Code Reference : 
-            [1] https://github.com/open-mmlab/mmsegmentation/blob/master/mmseg/datasets/cityscapes.py   
+            [1] https://github.com/open-mmlab/mmsegmentation
         """
         img_infos = []
         img_list = []
+
         for _, _, files in os.walk(self.img_dir):
             for file in files:
-                print(file)
                 if file.endswith(self.img_suffix):
-
                     img_list.append(file)
 
 
@@ -72,30 +74,55 @@ class CityscapesDatset:
 
         return img_infos
 
-    def prepare_train_img(self, idx): 
+    def prepare_img(self, idx): 
 
-        return None
+        img_filename = self.img_infos[idx]['filename']
+        img_prefix = img_filename.split('_')[0]
 
-    def prepare_test_img(self, idx): 
+        img_path = osp.join(self.img_dir, img_prefix, img_filename)
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        return None
+        return img
 
-    def __getitem__(self, idx): 
+    def prepare_seg_mask(self, idx): 
+
+        seg_filename = self.img_infos[idx]['ann']['seg_map']
+        seg_prefix = seg_filename.split('_')[0]
+
+        seg_path = osp.join(self.ann_dir, seg_prefix, seg_filename)
+        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
+
+        return seg
+
+
+    def __getitem__(self, idx):
         
-        return None 
+        """
+        Get training/test data after pipeline.
 
-    
+        Args:
+            idx (int): Index of data.
+        Returns:
+            dict: Training/test data (with annotation if `test_mode` is set
+                False).
+
+        Code Reference : 
+            [1] https://github.com/open-mmlab/mmsegmentation
+        """
+        data = {}
+        data['image'] = self.prepare_img(idx)
+        data['segmentation_mask'] = self.prepare_seg_mask(idx)
+
+        return data
 
 
-
-
-
-def main(): 
+def test(): 
     data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
-    img_infos = cityscapes_dataset.load_annotations()
-    print(img_infos)
+    img_infos = cityscapes_dataset.img_infos
+    print(cityscapes_dataset[0]['segmentation_mask'].shape)
     return None 
 
 if __name__ == "__main__" : 
-    main()
+    test()
