@@ -121,6 +121,11 @@ class CityscapesDatset:
             
     
 
+    def __len__ (self) : 
+
+        return len(self.img_infos)
+
+    
     def __getitem__(self, idx):
         
         """Get training/test data after pipeline.
