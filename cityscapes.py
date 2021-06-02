@@ -4,7 +4,7 @@ import cv2
 
 import os.path as osp 
 import numpy as np 
-import cityscapesscripts.helpers.labels as CSLabels
+import cityscapesscripts.helpers.labels as CSLabels # to be deprecated 
 
 from glob import glob 
 
