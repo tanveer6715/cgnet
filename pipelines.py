@@ -5,6 +5,7 @@ import tensorflow as tf
 
 
 def normalize(input_image, input_mask):
+    "TODO : add better normalization strategy"
     """
     
 
@@ -39,6 +40,7 @@ def load_image_train(datapoint, size=(128, 128)):
 
 
 def load_image_test(datapoint, size=(128, 128)):
+
     """
 
     """
@@ -56,6 +58,15 @@ def load_image_test(datapoint, size=(128, 128)):
     return input_image, input_mask
 
 def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
+    """
+    
+    TODO 
+        1. add ignore classs
+        2. add remaining part of batch loop
+        3. add test mode 
+
+    """
+
     """
     Args : 
         Dataset : dataset class defined in cityscapes.py. 
