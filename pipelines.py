@@ -55,7 +55,7 @@ def load_image_test(datapoint, size=(128, 128)):
 
     return input_image, input_mask
 
-def batch_generator(Dataset, batch_size, shuffle=True):
+def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
     """
     Args : 
         Dataset : dataset class defined in cityscapes.py. 
@@ -74,13 +74,18 @@ def batch_generator(Dataset, batch_size, shuffle=True):
         imgs_to_stack = []
         labels_to_stack = []
 
-        for data_idx in range(idx, batch_size*(idx+1)):
+        for data_idx in range(idx, idx+batch_size):
             image, label = load_image_train(Dataset[data_idx])
             imgs_to_stack.append(image)
             labels_to_stack.append(label)
         
         images = tf.stack(imgs_to_stack)
         labels = tf.stack(labels_to_stack)
+
+        # if ignore_class : 
+        #     idx_to_ignore = labels==255
+        #     print(idx_to_ignore.dtype)
+        #     labels[idx_to_ignore] = 0.0
 
         yield images, labels
         
