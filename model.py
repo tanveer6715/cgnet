@@ -1,7 +1,10 @@
 import tensorflow as tf 
 
-from tensorflow.keras.layers import Dense, Flatten, Conv2D
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, UpSampling2D
 from tensorflow.keras import Model
+
+from tensorflow.keras.layers import BatchNormalization 
+from tensorflow.keras.layers import PReLU
 
 from pipelines import batch_generator
 
@@ -17,15 +20,39 @@ class MyModel(Model):
 
         """
         super(MyModel, self).__init__()
-        self.conv1 = Conv2D(32, 3, activation='relu', padding='same')
-        self.conv2 = Conv2D(32, 3, activation='relu', padding='same')
-        self.conv3 = Conv2D(20, 3, activation='relu', padding='same')
+
+        self.conv1 = Conv2D(32, 3,  padding='same', strides=(2, 2))
+        self.bn1 = BatchNormalization()
+        self.PReLU1 = PReLU()
+
+        self.conv2 = Conv2D(32, 3,  padding='same')
+        self.bn2 = BatchNormalization()
+        self.PReLU2 = PReLU()
+
+        self.conv3 = Conv2D(20, 3,  padding='same')
+        self.bn3 = BatchNormalization()
+        self.PReLU3 = PReLU()
+
+        self.upsample = UpSampling2D()
+        
 
 
     def call(self, x):
+
         x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.PReLU1(x)
+    
         x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.PReLU2(x)
+
+
         x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.PReLU3(x)
+
+        x = self.upsample(x)
         
         return x
 
