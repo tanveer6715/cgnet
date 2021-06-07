@@ -9,10 +9,17 @@ from cityscapes import CityscapesDatset
 
 class MyModel(Model):
     def __init__(self):
+        """
+
+        TODO : 
+            1. add cg block 
+
+
+        """
         super(MyModel, self).__init__()
         self.conv1 = Conv2D(32, 3, activation='relu', padding='same')
         self.conv2 = Conv2D(32, 3, activation='relu', padding='same')
-        self.conv3 = Conv2D(256, 3, activation='relu', padding='same')
+        self.conv3 = Conv2D(20, 3, activation='relu', padding='same')
 
 
     def call(self, x):
