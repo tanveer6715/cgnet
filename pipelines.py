@@ -93,10 +93,9 @@ def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
         images = tf.stack(imgs_to_stack)
         labels = tf.stack(labels_to_stack)
 
-        # if ignore_class : 
-        #     idx_to_ignore = labels==255
-        #     print(idx_to_ignore.dtype)
-        #     labels[idx_to_ignore] = 0.0
+        if ignore_class : 
+            idx_to_ignore = labels==255
+            labels = tf.where(idx_to_ignore, labels, 0)
 
         yield images, labels
         
