@@ -16,7 +16,7 @@ def normalize(input_image, input_mask):
     return input_image, input_mask
 
 @tf.function
-def load_image_train(datapoint, size=(128, 128)):
+def load_image_train(datapoint, size=(681, 681)):
 
     """
 
@@ -39,7 +39,7 @@ def load_image_train(datapoint, size=(128, 128)):
     return input_image, input_mask
 
 
-def load_image_test(datapoint, size=(128, 128)):
+def load_image_test(datapoint, size=(681, 681)):
 
     """
 
@@ -94,7 +94,7 @@ def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
         labels = tf.stack(labels_to_stack)
 
         if ignore_class : 
-            idx_to_ignore = labels==255
+            idx_to_ignore = labels!=ignore_class
             labels = tf.where(idx_to_ignore, labels, 0)
 
         yield images, labels
