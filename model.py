@@ -14,7 +14,7 @@ from cityscapes import CityscapesDatset
 
 
 class ConvBNPReLU(Model):
-    def __init__(self, nOut, kSize, stride=1, padding='same'):
+    def __init__(self, nOut, kSize, strides=1, padding='same'):
         """
         Code Reference : 
             https://github.com/wutianyiRosun/CGNet
@@ -25,7 +25,7 @@ class ConvBNPReLU(Model):
         """
         super(ConvBNPReLU, self).__init__()
 
-        self.conv = Conv2D(nOut, kSize, strides=(stride, stride), padding=padding)
+        self.conv = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding)
         self.bn = BatchNormalization(epsilon=1e-03)
         self.PReLU = PReLU()
 
@@ -40,8 +40,35 @@ class ConvBNPReLU(Model):
         output = self.PReLU(output)
         return output
 
+# class CGblock(Model):
+#     def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True):
+        
+#         super(CGblock, self).__init__()
 
+#         self.ConvBNPReLU = ConvBNPReLU(nOut, strides=, padding='valid')
 
+#         self.F_loc = SeparableConv2D(nOut, kSize, strides=(strides, strides), padding=padding ,activation=None) #floc
+#         self.F_sur = SeparableConv2D(nOut, kSize, strides=(strides, strides), padding=padding, dilation_rate) #fsur
+#         self.Concatenate = Concatenate() #fjoi
+#         self.F_glo = GlobalAveragePooling2D(nOut, reduction)#fglo
+#         self.FC1 = Dense(nOut, activation= 'relu')
+#         self.FC2 = Dense(nOut, activation= 'relu')
+
+#     def call(self, input):
+#         """
+#         args:
+#            input: input feature map
+#            return: transformed feature map
+#         """
+#         output = self.ConvBNPReLU(input)
+#         loc = self.F_loc(output)
+#         sur = self.F_sur(output)
+#         output = Concatenate()([loc,sur])
+#         output = self.F_glo(output)
+#         output = self.FC1(output)
+#         output = self.FC2(output)
+
+#         return output
 
 class CGNet(Model):
     def __init__(self):
@@ -54,22 +81,35 @@ class CGNet(Model):
         """
         super(CGNet, self).__init__()
 
-        self.conv1 = Conv2D(32, 3,  padding='same', strides=(2, 2))
-        self.bn1 = BatchNormalization()
-        self.PReLU1 = PReLU()
+        self.ConvBNPReLU1 = ConvBNPReLU(32, 3, strides=2, padding='valid')
+        self.ConvBNPReLU2 = ConvBNPReLU(32, 3)
+        self.ConvBNPReLU3 = ConvBNPReLU(32, 3)
 
-        self.conv2 = Conv2D(32, 3,  padding='same')
-        self.bn2 = BatchNormalization()
-        self.PReLU2 = PReLU()
+        # First CG block (M=3) dilation=2
+    
+        self.ConvBNPReLU4 = ConvBNPReLU(64, 3, strides=2, padding='valid')
 
-        self.conv3 = Conv2D(32, 3,  padding='same')
-        self.bn3 = BatchNormalization()
-        self.PReLU3 = PReLU()
+        self.F_loc = SeparableConv2D(64, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(1, 1), depth_multiplier=1, activation=None) #floc
+        self.F_sur = SeparableConv2D(64, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(2, 2), depth_multiplier=1, activation=None) #fsur
+        self.Concatenate = Concatenate() #fjoi
+        self.F_glo = GlobalAveragePooling2D()#fglo
+        self.FC1 = Dense(20, activation= 'relu')
+        self.FC2 = Dense(20, activation= 'relu')
+        
+        #self.upsample = UpSampling2D()
 
-        self.ConvBNPReLU = ConvBNPReLU(20, 3)
 
-        self.upsample = UpSampling2D()
+        # Second CG block (N=15) dilation=4
+        self.ConvBNPReLU5 = ConvBNPReLU(64, 1)
 
+        self.F_loc1 = SeparableConv2D(128, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(1, 1), depth_multiplier=1, activation=None) #floc
+        self.F_sur1= SeparableConv2D(128, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(4, 4), depth_multiplier=1, activation=None) #fsur
+        self.Concatenate = Concatenate() #fjoi
+        self.F_glo1 = GlobalAveragePooling2D()#fglo
+        self.FC3 = Dense(20, activation= 'relu')
+        self.FC4 = Dense(20, activation= 'sigmoid')
+        self.ConvBNPReLU6 = ConvBNPReLU(19, 1)
+        #self.upsample = UpSampling2D()
         #Defining CG block M
         # self.seperable1 = SeparableConv2D(64, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(1, 1), depth_multiplier=1, activation=None) #floc
         # self.seperable2 = SeparableConv2D(64, 3, strides=(1, 1), padding='same',data_format=None, dilation_rate=(2, 2), depth_multiplier=1, activation=None) #fsur
@@ -99,24 +139,43 @@ class CGNet(Model):
     def call(self, input):
         print(input.shape)
 
-        x = self.conv1(input)
-        x = self.bn1(x)
-        x = self.PReLU1(x)
+        output = self.ConvBNPReLU1(input)
+        output = self.ConvBNPReLU2(output)
+        output = self.ConvBNPReLU3(output)
+
+        output = self.ConvBNPReLU4(output)
+        print(output.shape)
+
+        output1 = self.F_loc(output)
+        print(output1.shape)
+        output2 = self.F_sur(output)
+        print(output2.shape)
     
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.PReLU2(x)
+        output3 = Concatenate()([output1, output2])
+        output4 = self.F_glo(output3)
+        output4 = self.FC1(output3)
+        output5 = self.FC2(output3)
+        
+        output5 = self.ConvBNPReLU5(output5)
+        print(output.shape)
 
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.PReLU3(x)
+        output6 = self.F_loc1(output5)
+        print(output1.shape)
+        output7 = self.F_sur1(output5)
+        print(output2.shape)
+    
+        output8 = Concatenate()([output6, output7])
+        output8 = self.F_glo1(output8)
+        output9 = self.FC3(output8)
+        output10 = self.FC4(output8)
+        output11=self.ConvBNPReLU6(output10)
+        
+        #output10 = self.upsample(output10)
 
-        x = self.ConvBNPReLU(x)
-        print(x.shape)
+        
+        print(output11.shape)
+        #output4 = self.upsample(output4)
 
-        x = self.upsample(x)
-
-        print(x.shape)
 
         # x1 = self.seperable1(x)
         # x2 = self.seperable2(x)
@@ -128,7 +187,7 @@ class CGNet(Model):
         # x = self.conv4
        
         
-        return x
+        return output11
 
 
 
@@ -137,7 +196,7 @@ class CGNet(Model):
 def test(): 
 
     "TODO: seperate trainining script"
-    model = MyModel()
+    model = CGNet()
 
     "TODO : Replace kerass functions with low level tf"
 
