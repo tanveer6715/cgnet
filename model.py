@@ -13,12 +13,15 @@ from pipelines import batch_generator
 
 from cityscapes import CityscapesDatset
 
+"""
+Code Reference : 
+    https://github.com/wutianyiRosun/CGNet
+"""
+
 
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same'):
         """
-        Code Reference : 
-            https://github.com/wutianyiRosun/CGNet
         args:
             nOut: number of output channels
             kSize: kernel size
@@ -157,6 +160,9 @@ class CGNet(Model):
         self.ConvBNPReLU2 = ConvBNPReLU(32, 3)
         self.ConvBNPReLU3 = ConvBNPReLU(32, 3)
 
+
+        # TODO : Add Input injection 
+        # TODO : CG Block down
         # First CG block (M=3) dilation=2
         self.CGBlock = CGblock(32, 3)
         self.CGBlock1 = CGblock(64, 3)
