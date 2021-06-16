@@ -8,6 +8,7 @@ from tensorflow.keras.layers import PReLU
 from tensorflow.keras.layers import Concatenate
 from tensorflow.keras.layers import SeparableConv2D
 from tensorflow.keras.layers import GlobalAveragePooling2D
+from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Permute
 from pipelines import batch_generator
 
@@ -88,6 +89,39 @@ class FGlo(Model):
 
         return input * output
 
+
+class CGblock_down(Model):
+    def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03):
+        
+        super(CGblock, self).__init__()
+        
+        n= int(nOut/2)
+        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same')
+
+        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None) #floc
+        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate) #fsur
+        self.Concatenate = Concatenate() #fjoi
+        self.BNPReLU = BNPReLU(2*nOut)
+        self.reduce = Conv2D(2*nOut,nOut,1,1)
+        self.FGLo = FGlo(nOut, reduction=reduction)#fglo
+
+    def call(self, input):
+        """
+        args:
+           input: input feature map
+           return: transformed feature map
+        """
+        output = self.ConvBNPReLU(input)
+
+        loc = self.F_loc(output)
+        sur = self.F_sur(output)
+        output = Concatenate()([loc,sur])
+        output = self.BNPReLU(output)
+        output = self.reduce(output)
+        output = self.FGLo(output)
+
+        return output
+
 class CGblock(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03):
         
@@ -144,9 +178,19 @@ class CGblock1(Model):
 
         return output
 
+class InputInjection(Model):
+    def __init__(self, downsamplingRatio):
+        super(InputInjection,self).__init__()
+        self.pool = Model()
+        for i in range(0, downsamplingRatio):
+            self.pool.append(AveragePooling2D(3, stride=2, padding=1))
+    def call(self, input):
+        for pool in self.pool:
+            input = pool(input)
+        return input
 
 class CGNet(Model):
-    def __init__(self):
+    def __init__(self,classes=19, M= 3, N= 21, dropout_flag = False):
         """
 
         TODO : 
@@ -155,16 +199,21 @@ class CGNet(Model):
 
         """
         super(CGNet, self).__init__()
-
+        #Stage 1
         self.ConvBNPReLU1 = ConvBNPReLU(32, 3, strides=2, padding='valid')
         self.ConvBNPReLU2 = ConvBNPReLU(32, 3)
-        self.ConvBNPReLU3 = ConvBNPReLU(32, 3)
-
-
-        # TODO : Add Input injection 
+        self.ConvBNPReLU3 = ConvBNPReLU(32, 3)    
+        # self.sample1 = InputInjection(1)  #down-sample for Input Injection, factor=2
+        # self.sample2 = InputInjection(2)
+        self.BN1 = BNPReLU()
+         # TODO : Add Input injection 
         # TODO : CG Block down
         # First CG block (M=3) dilation=2
+        #Stage 2
+        self.CGBlock_down=CGblock(32, 3, dilation_rate=2)
         self.CGBlock = CGblock(32, 3)
+        #Stage 3
+        self.CGBlock_down=CGblock(32, 3, dilation_rate=4)
         self.CGBlock1 = CGblock(64, 3)
         self.upsample = UpSampling2D()
 
@@ -222,7 +271,12 @@ class CGNet(Model):
         output = self.ConvBNPReLU1(input)
         output = self.ConvBNPReLU2(output)
         output = self.ConvBNPReLU3(output)
+        # inp1 =   self.sample1(input)
+        # inp2 =   self.sample2(input)
+        output = self.BN1(output)
+        output= self.CGBlock_down(output)
         output = self.CGBlock(output)
+        output= self.CGBlock_down(output)
         output = self.CGBlock1(output)
         output = self.upsample(output)
         # output = self.ConvBNPReLU4(output)
