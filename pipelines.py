@@ -16,7 +16,7 @@ def normalize(input_image, input_mask):
     return input_image, input_mask
 
 @tf.function
-def load_image_train(datapoint, size=(681, 681)):
+def load_image_train(datapoint, size=(680, 680)):
 
     """
 
@@ -39,7 +39,7 @@ def load_image_train(datapoint, size=(681, 681)):
     return input_image, input_mask
 
 
-def load_image_test(datapoint, size=(681, 681)):
+def load_image_test(datapoint, size=(680, 680)):
 
     """
 

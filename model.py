@@ -94,17 +94,17 @@ class FGlo(Model):
 class CGblock_down(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03):
         
-        super(CGblock, self).__init__()
+        super(CGblock_down, self).__init__()
         
         n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same')
+        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=2, padding='valid')
 
         self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None) #floc
         self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
-        self.reduce = Conv2D(2*nOut,nOut,1,1)
-        self.FGLo = FGlo(nOut, reduction=reduction)#fglo
+        self.reduce = Conv2D(nOut, 1, 1)
+        self.FGLo = FGlo(nOut, reduction=reduction) #fglo
 
     def call(self, input):
         """
@@ -159,22 +159,20 @@ class InputInjection(Model):
     args:
     """
     def __init__(self, downsamplingRatio):
-        super(InputInjection,self).__init__()
-        self.pool = tf.keras.Sequential()
+        super(InputInjection, self).__init__()
+        self.pool = []
         for i in range(0, downsamplingRatio):
-            self.pool.add(AveragePooling2D(3, stride=2, padding=1))
+            self.pool.append(AveragePooling2D(3, strides=2))
     def call(self, input):
         for pool in self.pool:
             input = pool(input)
         return input
 
+
+
 class CGNet(Model):
     def __init__(self,classes=19, M= 3, N= 21, dropout_flag = False):
         """
-
-        TODO : 
-            1. add cg block 
-
 
         """
         super(CGNet, self).__init__()
@@ -191,19 +189,19 @@ class CGNet(Model):
         # First CG block (M=3) dilation=2
         #Stage 2
         self.stage2_1 = CGblock_down(32, 3, dilation_rate=2, reduction=8)
-        self.stage2 = tf.keras.Sequential() 
+        self.stage2 = []
 
         for i in range(0, M-1): 
-            self.stage2.add(CGblock(64, 3, dilation_rate=2, reduction=8))
+            self.stage2.append(CGblock(64, 3, dilation_rate=2, reduction=8))
             
         self.bn2 = BNPReLU()
 
         #Stage 3
         self.stage3_1 = CGblock_down(128, 3, dilation_rate=4, reduction=16)
-        self.stage3 = tf.keras.Sequential() 
+        self.stage3 = []
 
         for i in range(0, N-1) : 
-            self.stage3.add(CGblock(128, 3, dilation_rate=4, reduction=16))
+            self.stage3.append(CGblock(128, 3, dilation_rate=4, reduction=16))
 
         self.bn3 = BNPReLU()
 
@@ -214,67 +212,58 @@ class CGNet(Model):
         else:
             self.classifier = tf.keras.Sequential(Conv2D( classes, 1))
 
+        """
+        TODO 
+        1. add an initialization 
+        """
+
 
     def call(self, input):
 
-        output = self.ConvBNPReLU1(input)
-        output = self.ConvBNPReLU2(output)
-        output = self.ConvBNPReLU3(output)
-        # inp1 =   self.sample1(input)
-        # inp2 =   self.sample2(input)
-        output = self.BN1(output)
-        output= self.CGBlock_down(output)
-        output = self.CGBlock(output)
-        output= self.CGBlock_down(output)
-        output = self.CGBlock1(output)
-        output = self.upsample(output)
-        # output = self.ConvBNPReLU4(output)
-        # print(output.shape)
 
-        # output1 = self.F_loc(output)
-        # print(output1.shape)
-        # output2 = self.F_sur(output)
-        # print(output2.shape)
-    
-        # output3 = Concatenate()([output1, output2])
-        # output4 = self.F_glo(output3)
-        # output4 = self.FC1(output3)
-        # output5 = self.FC2(output3)
+        # Stage 1 
+        print("Training starts with {}".format(input.shape))
+        output1 = self.stage1_1(input)
+        output1 = self.stage1_2(output1)
+        output1 = self.stage1_3(output1)
         
-        # output5 = self.ConvBNPReLU5(output5)
-        # print(output.shape)
 
-        # output6 = self.F_loc1(output5)
-        # print(output1.shape)
-        # output7 = self.F_sur1(output5)
-        # print(output2.shape)
-    
-        # output8 = Concatenate()([output6, output7])
-        # output8 = self.F_glo1(output8)
-        # output9 = self.FC3(output8)
-        # output10 = self.FC4(output8)
-        # output11=self.ConvBNPReLU6(output10)
-        
-        # #output10 = self.upsample(output10)
+        inp1 =   self.sample1(input)
+        inp2 =   self.sample2(input)
 
-        
-        # print(output11.shape)
-        #output4 = self.upsample(output4)
+        output1_cat = self.bn1(Concatenate()([output1, inp1]))
+        print("Stage 1 ends with {}".format(output1_cat.shape))
 
+        # Stage 2
+        output2_1 = self.stage2_1(output1_cat) 
+        print("Stage 2 starts with {}".format(output2_1.shape))
 
-        # x1 = self.seperable1(x)
-        # x2 = self.seperable2(x)
-        # x = self.concatted1()[x]
-        # x = self.bn4(x)
-        # x = self.PReLU4(x)
-        # x = self.globavg(x)
-        # x = self.dense1(x)
-        # x = self.conv4
-       
-        
-        return output
+        for i, layer in enumerate(self.stage2): 
+            if i == 0 : 
+                output2 = layer(output2_1)
+            else : 
+                output2 = layer(output2)
 
+        output2_cat = self.bn2(Concatenate()([output2, output2_1, inp2]))
 
+        # Stage 3 
+        output3_1 = self.stage3_1(output2_cat)
+
+        for i, layer in enumerate(self.stage3): 
+            if i == 0 : 
+                output3 = layer(output3_1)
+            else : 
+                output3 = layer(output3)
+
+        output3_cat = self.bn3(Concatenate()([output3, output3_1]))
+
+        # classifier 
+        classifier = self.classifier(output3_cat)
+
+        # upsample segmenation map ---> the input image size
+        out = tf.image.resize(classifier, (input.shape[1], input.shape[2]))
+
+        return out 
 
 
 
@@ -301,6 +290,10 @@ def test():
         with tf.GradientTape() as tape:
             predictions = model(images)
             loss = loss_object(labels, predictions)
+        """
+        TODO 
+        print training progress 
+        """
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -314,6 +307,10 @@ def test():
 
         test_loss(t_loss)
         test_accuracy(labels, predictions)
+        """
+        TODO 
+        print validation result of each epoch
+        """
 
     EPOCHS = 5
 
