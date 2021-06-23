@@ -1,16 +1,16 @@
-from cityscapes import CityscapesDatset
 
 import tensorflow as tf 
 
+from cityscapes import CityscapesDatset
 
 
 def normalize(input_image, input_mask):
     "TODO : add better normalization strategy"
     """
-    
+
+    Args
 
     """
-
     input_image = input_image / 255.0
 
     return input_image, input_mask
@@ -19,7 +19,12 @@ def normalize(input_image, input_mask):
 def load_image_train(datapoint, size=(680, 680)):
 
     """
+    Load training data 
 
+    Args : 
+
+    Returns : 
+    
     """
 
     input_image = tf.cast(datapoint['image'], tf.float32)
@@ -39,9 +44,14 @@ def load_image_train(datapoint, size=(680, 680)):
     return input_image, input_mask
 
 
-def load_image_test(datapoint, size=(680, 680)):
+def load_image_test(datapoint, size=(680, 680), is_normalize = True):
 
     """
+    Load test images 
+
+    Args : 
+
+    Returns 
 
     """
     input_image = tf.cast(datapoint['image'], tf.float32)
@@ -50,28 +60,34 @@ def load_image_test(datapoint, size=(680, 680)):
     
 
     input_image = tf.image.resize(datapoint['image'], size)
-    input_mask = tf.image.resize(datapoint['segmentation_mask'], size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    input_mask = tf.image.resize(input_mask, size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
+    if is_normalize :
+        input_image, input_mask = normalize(input_image, input_mask)
 
-    input_image, input_mask = normalize(input_image, input_mask)
 
     return input_image, input_mask
 
-def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
-    """
-    
+def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
+    """    
     TODO 
-        1. add ignore classs
-        2. add remaining part of batch loop
-        3. add test mode 
+        1. add remaining part of batch loop
+        2. add test mode 
+        3. add a function to handle ignore class 
+            Currently, the ignore_class is regared as a background. 
 
     """
 
     """
     Args : 
-        Dataset : dataset class defined in cityscapes.py. 
-    
+        Dataset (class) : dataset class defined in cityscapes.py. 
+        batch_size (int) : batch size 
+        shuffle (bool) : shuffle dataset order 
+        ignore_class (int) : class number to be ignored 
+
     Return : 
+        images (np.array) : images 
+        labels (np.array) : labels array in 2d 
         
     """
     idx_dataset = [range(len(Dataset))]
