@@ -1,7 +1,6 @@
 
 from re import VERBOSE
 import tensorflow as tf
-import tensorflow_addons as tfa
 from cityscapes import CityscapesDatset
 from model import CGNet
 from pipelines import batch_generator
