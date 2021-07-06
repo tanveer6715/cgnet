@@ -6,6 +6,7 @@ import os.path as osp
 import numpy as np 
 import cityscapesscripts.helpers.labels as CSLabels # to be deprecated 
 
+from tqdm import tqdm
 from glob import glob 
 
 CLASSES = ('road', 'sidewalk', 'building', 'wall', 
@@ -123,6 +124,30 @@ class CityscapesDatset:
             # print(label.name)
             seg_copy[seg == label.id] = label.trainId
         return seg_copy
+
+    @staticmethod
+    def _get_class_weight(data_dir):
+        """get class weight of cityscapes dataset 
+        
+        
+        """
+        
+        cityscapes_dataset = CityscapesDatset(data_dir)
+        img_infos = cityscapes_dataset.img_infos
+
+        data_length = len(cityscapes_dataset)
+        
+        hist_sum = np.zeros(20)
+
+        for idx in tqdm(range(data_length)): 
+            data = cityscapes_dataset[idx]
+            segmentation_mask = data['segmentation_mask']
+            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 255])
+            hist_sum = hist_sum + hist
+
+        hist_sum = hist_sum/np.sum(hist_sum)
+
+        np.save('hist_sum.npy', hist_sum)
             
     
 
@@ -149,11 +174,17 @@ class CityscapesDatset:
 
 
 def test(): 
-    data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
-    img_infos = cityscapes_dataset.img_infos
-    for data in cityscapes_dataset: 
-        print(np.unique(data['segmentation_mask'])[-2])
+
+    cityscapes_dataset._get_class_weight(data_dir)
+    
+    
+
+    
+    
+
+        
     
     return None 
 
