@@ -314,7 +314,7 @@ def test():
 
     EPOCHS = 5
 
-    data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     
     "TODO: add test datset mode to cityscapes"
     cityscapes_dataset = CityscapesDatset(data_dir)
@@ -330,11 +330,11 @@ def test():
             
             train_step(images, labels)
         
-        template = 'Epoch: {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
-        print (template.format(epoch+1,
-                                train_loss.result(),
-                                train_accuracy.result()*100,
-                                ))
+            template = 'Epoch: {}, Loss: {}, Accuracy: {}'
+            print (template.format(epoch+1,
+                                    train_loss.result(),
+                                    train_accuracy.result()*100,
+                                    ))
         
 
 

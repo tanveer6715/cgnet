@@ -26,7 +26,7 @@ train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy
 
 EPOCHS = 50
 
-DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 cityscapes_dataset = CityscapesDatset(DATA_DIR)
 TRAIN_LENGTH = len(cityscapes_dataset)
@@ -49,7 +49,7 @@ make options for variables
 
 
 @tf.function
-def train_step(model, images, labels):
+def train_step(images, labels):
     with tf.GradientTape() as tape:
         predictions = model(images)
         loss = loss_object(labels, predictions)
@@ -75,7 +75,7 @@ def train():
         "TODO: add progress bar to training loop"
         for images, labels in tqdm(cityscapes_generator):
             
-            train_step(model, images, labels)
+            train_step(images, labels)
         
             template = 'Epoch: {}, Loss: {}, Accuracy: {}'
             print (template.format(epoch+1,
