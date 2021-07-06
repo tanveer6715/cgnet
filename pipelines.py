@@ -111,7 +111,7 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
 
         if ignore_class : 
             idx_to_ignore = labels!=ignore_class
-            labels = tf.where(idx_to_ignore, labels, 0)
+            labels = tf.where(idx_to_ignore, labels, 19)
 
         yield images, labels
         
