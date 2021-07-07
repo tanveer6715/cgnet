@@ -22,7 +22,7 @@ optimizer = tf.keras.optimizers.Adam()
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-
+train_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='train_miou')
 
 ## TODO we need to make argument input from command line 
 
@@ -67,7 +67,8 @@ def compute_loss(lables, predictions):
         #     tf.print("you are here 2")
         # tf.print("Weight Value")
         # tf.print(weight)
-        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx])
+        # tf.print(idx, class_weight[idx])
+        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx]*2)
         # tf.print("Max value in weight map")
         # tf.print(tf.math.reduce_max(weight_map))
         # tf.print(weight_map)
@@ -100,6 +101,11 @@ def train_step(images, labels,):
 
     train_loss(loss)
     train_accuracy(labels, predictions)
+
+    argmax_predictions = tf.math.argmax(predictions, 3)
+    
+    train_iou.update_state(labels, argmax_predictions)
+    
  
 
 
@@ -120,11 +126,13 @@ def train():
             
             train_step(images, labels)
 
+
         
-            template = 'Epoch: {}, Loss: {}, Accuracy: {}'
+            template = 'Epoch: {}, Loss: {}, Accuracy: {}, MeanIoU: {}'
             print (template.format(epoch+1,
                                     train_loss.result(),
-                                    train_accuracy.result()*100
+                                    train_accuracy.result()*100,
+                                    train_iou.result()*100
                                     ))
         if epoch % 5 == 0 :
             model.save_weights('checkpoints/epoch_{}.h5'.format(epoch))
