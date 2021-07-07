@@ -126,7 +126,7 @@ class CityscapesDatset:
         return seg_copy
 
     @staticmethod
-    def _get_class_weight(data_dir):
+    def _get_median_freq_weight(data_dir):
         """get class weight of cityscapes dataset 
         
         
@@ -138,16 +138,26 @@ class CityscapesDatset:
         data_length = len(cityscapes_dataset)
         
         hist_sum = np.zeros(20)
+        num_pxls_present = np.zeros(20)
 
         for idx in tqdm(range(data_length)): 
             data = cityscapes_dataset[idx]
             segmentation_mask = data['segmentation_mask']
-            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 255])
+            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20])
             hist_sum = hist_sum + hist
+            class_existence_map = np.array(hist, dtype = bool)
+            num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
+            num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
 
-        hist_sum = hist_sum/np.sum(hist_sum)
+        freq = np.divide(hist_sum, num_pxls_present)
 
-        np.save('hist_sum.npy', hist_sum)
+        freq = np.nan_to_num(freq)
+        median_freq = np.nanmedian(freq)
+
+        class_weight = np.divide(median_freq, freq)
+        class_weight[np.isinf(class_weight)] = 0
+
+        np.save('class_weight_cityscapes.npy', class_weight)
             
     
 
@@ -174,10 +184,10 @@ class CityscapesDatset:
 
 
 def test(): 
-    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+    data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
 
-    cityscapes_dataset._get_class_weight(data_dir)
+    cityscapes_dataset._get_median_freq_weight(data_dir)
     
     
 
