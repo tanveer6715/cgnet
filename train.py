@@ -17,7 +17,7 @@ loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
 )
 
 hist_sum = np.load('hist_sum.npy', 'r')
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.0001)
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
@@ -25,7 +25,7 @@ train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy
 
 ## TODO we need to make argument input from command line 
 
-EPOCHS = 50
+EPOCHS = 280
 
 DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
@@ -55,8 +55,6 @@ def compute_loss(lables, predictions):
     for idx in range(19):
         class_idx_map = tf.squeeze(lables) == idx
         weight_map = tf.where(class_idx_map, weight_map, np.median(hist_sum)/hist_sum[idx])
-        tf.print(np.median(hist_sum)/hist_sum[idx])
-        tf.print(np.median(hist_sum))
     
     loss = tf.math.multiply(loss, weight_map)
 
@@ -64,9 +62,6 @@ def compute_loss(lables, predictions):
     
 
     return loss
-
-
-    
 
 
 
