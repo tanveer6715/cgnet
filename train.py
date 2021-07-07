@@ -9,14 +9,15 @@ import numpy as np
 from tqdm import tqdm 
 
 
-model = CGNet()
+model = CGNet(classes = 19)
 
 
 loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
     reduction=tf.keras.losses.Reduction.NONE
 )
 
-hist_sum = np.load('hist_sum.npy', 'r')
+class_weight = np.load('class_weight_cityscapes.npy', 'r')
+print(class_weight)
 optimizer = tf.keras.optimizers.Adam()
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -25,9 +26,9 @@ train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy
 
 ## TODO we need to make argument input from command line 
 
-EPOCHS = 50
+EPOCHS = 280
 
-DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 cityscapes_dataset = CityscapesDatset(DATA_DIR)
 TRAIN_LENGTH = len(cityscapes_dataset)
@@ -53,11 +54,27 @@ def compute_loss(lables, predictions):
     weight_map = tf.ones_like(loss)
 
     for idx in range(19):
-        class_idx_map = tf.squeeze(lables) == idx
-        weight_map = tf.where(class_idx_map, weight_map, np.median(hist_sum)/hist_sum[idx])
-        tf.print(np.median(hist_sum)/hist_sum[idx])
-        tf.print(np.median(hist_sum))
+        # for indexing not_equal has to be used...
+        class_idx_map = tf.math.not_equal(tf.squeeze(lables), idx)
+        
+        # tf.print(class_idx_map)
+        # tf.print("index : {}".format(idx))
+        # # tf.print(tf.squeeze(lables) == idx)
+        
+        # tf.print("Num pixels in class map")
+        # tf.print(tf.math.reduce_sum(tf.cast(class_idx_map, dtype = tf.float32)))
+        
+        #     tf.print("you are here 2")
+        # tf.print("Weight Value")
+        # tf.print(weight)
+        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx])
+        # tf.print("Max value in weight map")
+        # tf.print(tf.math.reduce_max(weight_map))
+        # tf.print(weight_map)
     
+    # tf.print("Max value in weight map")
+    # tf.print(tf.math.reduce_max(weight_map))
+
     loss = tf.math.multiply(loss, weight_map)
 
     loss = tf.reduce_mean(loss)
@@ -65,8 +82,6 @@ def compute_loss(lables, predictions):
 
     return loss
 
-
-    
 
 
 
@@ -97,7 +112,7 @@ def train():
     # model.load_weights(model_weight_path)
 
     for epoch in tqdm(range(EPOCHS)):
-        cityscapes_generator = batch_generator(cityscapes_dataset, 4)
+        cityscapes_generator = batch_generator(cityscapes_dataset, 2)
 
         
         "TODO: add progress bar to training loop"
@@ -127,4 +142,5 @@ def train():
 
 if __name__ == "__main__" : 
      train()
+
 
