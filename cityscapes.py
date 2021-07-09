@@ -126,28 +126,47 @@ class CityscapesDatset:
         return seg_copy
 
     @staticmethod
-    def _get_class_weight(data_dir):
+    def _get_class_weight(data_dir, mode='median'):
         """get class weight of cityscapes dataset 
         
         
         """
-        
         cityscapes_dataset = CityscapesDatset(data_dir)
         img_infos = cityscapes_dataset.img_infos
 
         data_length = len(cityscapes_dataset)
         
         hist_sum = np.zeros(20)
+        num_pxls_present = np.zeros(20)
 
-        for idx in tqdm(range(data_length)): 
+        for idx in tqdm(range(100)): 
             data = cityscapes_dataset[idx]
             segmentation_mask = data['segmentation_mask']
-            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 255])
+            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20])
             hist_sum = hist_sum + hist
+            class_existence_map = np.array(hist, dtype = bool)
+            num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
+            num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
 
-        hist_sum = hist_sum/np.sum(hist_sum)
+        freq = np.divide(hist_sum, num_pxls_present)
 
-        np.save('hist_sum.npy', hist_sum)
+        freq = np.nan_to_num(freq)
+        if 'median' in mode :
+            divider = np.nanmedian(freq)
+        elif mode == 'mean' :
+            divider = np.nanmean(freq)
+
+        print(divider)
+
+        class_weight = np.divide(divider, freq)
+    
+        if 'log' in mode : 
+            class_weight = np.log(class_weight) + np.exp(1)
+
+        class_weight[np.isinf(class_weight)] = 0
+        print(class_weight)
+
+        np.save('class_weight_cityscapes.npy', class_weight)
             
     
 
@@ -177,7 +196,7 @@ def test():
     data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
 
-    cityscapes_dataset._get_class_weight(data_dir)
+    cityscapes_dataset._get_class_weight(data_dir, mode = 'mean')
     
     
 

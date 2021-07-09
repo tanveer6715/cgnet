@@ -217,6 +217,11 @@ class CGNet(Model):
         1. add an initialization 
         """
 
+        
+            
+
+
+
 
     def call(self, input):
 
