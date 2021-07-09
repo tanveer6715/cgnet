@@ -1,4 +1,5 @@
 
+from random import shuffle
 import tensorflow as tf 
 
 from cityscapes import CityscapesDatset
@@ -90,7 +91,8 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
         labels (np.array) : labels array in 2d 
         
     """
-    idx_dataset = [range(len(Dataset))]
+    idx_dataset = list(range(len(Dataset)))
+    
 
     if shuffle :
         from random import shuffle
@@ -101,7 +103,8 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
         imgs_to_stack = []
         labels_to_stack = []
 
-        for data_idx in range(idx, idx+batch_size):
+        for _data_idx in range(idx*batch_size, (idx+1)*batch_size):
+            data_idx = idx_dataset[_data_idx]
             image, label = load_image_train(Dataset[data_idx])
             imgs_to_stack.append(image)
             labels_to_stack.append(label)
@@ -114,6 +117,46 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
             labels = tf.where(idx_to_ignore, labels, 0)
 
         yield images, labels
+
+class _batch_generator(dataset, batch_size, shuffle=True, ignore_class = 255): 
+
+
+    def __init__(self, dataset, batch_size, ):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.idx_dataset = list(range(len(dataset)))
+        self.ignore_class = ignore_class
+        self.idx = 0
+        
+        if shuffle :
+            from random import shuffle
+            shuffle(self.idx_dataset)
+
+    def __iter__(self):
+        return self
+
+
+    def __next__(self):
+        self.idx += self.batch_size
+        imgs_to_stack = []
+        labels_to_stack = []
+
+        for data_idx in range(self.idx, self.idx+self.batch_size):
+            image, label = load_image_train(self.dataset[data_idx])
+            imgs_to_stack.append(image)
+            labels_to_stack.append(label)
+        
+        images = tf.stack(imgs_to_stack)
+        labels = tf.stack(labels_to_stack)
+
+        if self.ignore_class : 
+            idx_to_ignore = labels!= self.ignore_class
+            labels = tf.where(idx_to_ignore, labels, 0)
+        
+        return images, labels
+
+
+
         
     
 

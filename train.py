@@ -16,7 +16,7 @@ loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
     reduction=tf.keras.losses.Reduction.NONE
 )
 
-class_weight = np.load('class_weight_cityscapes.npy', 'r')
+class_weight = np.load('class_weight_cityscapes1.npy', 'r')
 print(class_weight)
 optimizer = tf.keras.optimizers.Adam()
 
@@ -68,7 +68,7 @@ def compute_loss(lables, predictions):
         # tf.print("Weight Value")
         # tf.print(weight)
         # tf.print(idx, class_weight[idx])
-        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx]*2)
+        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx])
         # tf.print("Max value in weight map")
         # tf.print(tf.math.reduce_max(weight_map))
         # tf.print(weight_map)

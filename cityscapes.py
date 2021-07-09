@@ -126,7 +126,7 @@ class CityscapesDatset:
         return seg_copy
 
     @staticmethod
-    def _get_class_weight(data_dir, mode='median'):
+    def _get_class_weight(data_dir):
         """get class weight of cityscapes dataset 
         
         
@@ -148,6 +148,7 @@ class CityscapesDatset:
             num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
             num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
 
+        np.seterr(divide='ignore', invalid='ignore')
         freq = np.divide(hist_sum, num_pxls_present)
 
         freq = np.nan_to_num(freq)
@@ -156,15 +157,10 @@ class CityscapesDatset:
         elif mode == 'mean' :
             divider = np.nanmean(freq)
 
-        print(divider)
-
-        class_weight = np.divide(divider, freq)
-    
-        if 'log' in mode : 
-            class_weight = np.log(class_weight) + np.exp(1)
-
-        class_weight[np.isinf(class_weight)] = 0
-        print(class_weight)
+        #class_weight = np.divide(median_freq, freq)
+        # class weight from ENet paper 
+        class_weight = 1 / np.log(1.02 + (median_freq/freq))
+        class_weight[-1] = 0
 
         np.save('class_weight_cityscapes.npy', class_weight)
             
@@ -196,7 +192,7 @@ def test():
     data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
 
-    cityscapes_dataset._get_class_weight(data_dir, mode = 'mean')
+    cityscapes_dataset._get_class_weight(data_dir)
     
     
 
