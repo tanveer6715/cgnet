@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, UpSampling2D
 from tensorflow.keras import Model
-
+from tensorflow.keras.initializers import he_normal
 from tensorflow.keras.layers import BatchNormalization 
 from tensorflow.keras.layers import PReLU
 from tensorflow.keras.layers import Concatenate
@@ -20,9 +20,9 @@ Code Reference :
     https://github.com/wutianyiRosun/CGNet
 """
 
-
+initializer = tf.keras.initializers.he_normal()
 class ConvBNPReLU(Model):
-    def __init__(self, nOut, kSize, strides=1, padding='same'):
+    def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=initializer):
         """
         args:
             nOut: number of output channels
@@ -31,7 +31,7 @@ class ConvBNPReLU(Model):
         """
         super(ConvBNPReLU, self).__init__()
 
-        self.conv = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding)
+        self.conv = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding, kernel_initializer=initializer )
         self.bn = BatchNormalization(epsilon=1e-03)
         self.PReLU = PReLU()
 
@@ -92,15 +92,15 @@ class FGlo(Model):
 
 
 class CGblock_down(Model):
-    def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03):
+    def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03, kernel_initializer=initializer):
         
         super(CGblock_down, self).__init__()
         
         n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=2, padding='valid')
+        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=2, padding='valid', kernel_initializer=initializer)
 
-        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None) #floc
-        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate) #fsur
+        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None, kernel_initializer=initializer) #floc
+        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate, kernel_initializer=initializer) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
         self.reduce = Conv2D(nOut, 1, 1)
@@ -124,15 +124,15 @@ class CGblock_down(Model):
         return output
 
 class CGblock(Model):
-    def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03):
+    def __init__(self, nOut, kSize, strides=1, padding='same', dilation_rate=2, reduction=16, add=True, epsilon=1e-03, kernel_initializer=initializer):
         
         super(CGblock, self).__init__()
         
         n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same')
+        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same', kernel_initializer=initializer)
 
-        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None) #floc
-        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate) #fsur
+        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None, kernel_initializer=initializer) #floc
+        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate, kernel_initializer=initializer) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU()
         self.FGLo = FGlo(nOut, reduction=reduction)#fglo
@@ -217,12 +217,7 @@ class CGNet(Model):
         1. add an initialization 
         """
 
-        for m in self.modules():
             
-
-
-
-
     def call(self, input):
 
 
