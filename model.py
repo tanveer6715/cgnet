@@ -171,7 +171,7 @@ class InputInjection(Model):
 
 
 class CGNet(Model):
-    def __init__(self,classes=20, M= 3, N= 21, dropout_flag = False):
+    def __init__(self, classes=20, M= 3, N= 21, dropout_flag = False):
         """
 
         """

@@ -3,7 +3,7 @@ from re import VERBOSE
 import tensorflow as tf
 from cityscapes import CityscapesDatset
 from model import CGNet
-from pipelines import batch_generator
+from pipelines import _batch_generator
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm 
@@ -16,8 +16,7 @@ loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
     reduction=tf.keras.losses.Reduction.NONE
 )
 
-class_weight = np.load('class_weight_cityscapes1.npy', 'r')
-print(class_weight)
+class_weight = np.load('class_weight_cityscapes.npy', 'r')
 optimizer = tf.keras.optimizers.Adam()
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -28,7 +27,7 @@ train_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='train_miou')
 
 EPOCHS = 280
 
-DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 cityscapes_dataset = CityscapesDatset(DATA_DIR)
 TRAIN_LENGTH = len(cityscapes_dataset)
@@ -118,7 +117,7 @@ def train():
     # model.load_weights(model_weight_path)
 
     for epoch in tqdm(range(EPOCHS)):
-        cityscapes_generator = batch_generator(cityscapes_dataset, 2)
+        cityscapes_generator = _batch_generator(cityscapes_dataset, 2)
 
         
         "TODO: add progress bar to training loop"

@@ -69,7 +69,7 @@ def load_image_test(datapoint, size=(680, 680), is_normalize = True):
 
     return input_image, input_mask
 
-def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
+def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
     """    
     TODO 
         1. add remaining part of batch loop
@@ -104,7 +104,7 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
         labels_to_stack = []
 
         for _data_idx in range(idx*batch_size, (idx+1)*batch_size):
-            data_idx = idx_dataset[_data_idx]
+            
             image, label = load_image_train(Dataset[data_idx])
             imgs_to_stack.append(image)
             labels_to_stack.append(label)
@@ -118,10 +118,9 @@ def batch_generator(Dataset, batch_size, shuffle=True,ignore_class = 255):
 
         yield images, labels
 
-class _batch_generator(dataset, batch_size, shuffle=True, ignore_class = 255): 
+class _batch_generator: 
 
-
-    def __init__(self, dataset, batch_size, ):
+    def __init__(self, dataset, batch_size, shuffle=True, ignore_class = 255):
         self.dataset = dataset
         self.batch_size = batch_size
         self.idx_dataset = list(range(len(dataset)))
@@ -141,7 +140,9 @@ class _batch_generator(dataset, batch_size, shuffle=True, ignore_class = 255):
         imgs_to_stack = []
         labels_to_stack = []
 
-        for data_idx in range(self.idx, self.idx+self.batch_size):
+        for _data_idx in range(self.idx, self.idx+self.batch_size):
+            data_idx = self.idx_dataset[_data_idx]
+            print(data_idx)
             image, label = load_image_train(self.dataset[data_idx])
             imgs_to_stack.append(image)
             labels_to_stack.append(label)

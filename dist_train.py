@@ -1,9 +1,10 @@
 from re import VERBOSE
 import tensorflow as tf 
+import numpy as np 
 
 from cityscapes import CityscapesDatset
 from model import CGNet
-from pipelines import batch_generator
+from pipelines import _batch_generator
 from tqdm import tqdm 
 
 
@@ -11,29 +12,35 @@ mirrored_strategy = tf.distribute.MirroredStrategy()
 print ('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
 
 with mirrored_strategy.scope():
-    model = CGNet()
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    model = CGNet(classes = 19)
+    optimizer = tf.keras.optimizers.Adam()
+
+
+loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
+    reduction=tf.keras.losses.Reduction.NONE
+)
+
+class_weight = np.load('class_weight_cityscapes.npy', 'r')
+optimizer = tf.keras.optimizers.Adam()
+
+
+
 
 ## TODO we need to make argument input from command line 
 
 EPOCHS = 280
 
-DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 cityscapes_dataset = CityscapesDatset(DATA_DIR)
 TRAIN_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TRAIN_LENGTH))
 
 # check the dataset type required!!! 
-
-cityscapes_generator = batch_generator(cityscapes_dataset, 8)
+cityscapes_generator = _batch_generator(cityscapes_dataset, 12)
 
 tf_cityscapes_generator = tf.data.Dataset.from_generator(cityscapes_generator)
-
 dist_cityscapes = mirrored_strategy.experimental_distribute_dataset(tf_cityscapes_generator)
-
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
-
 
 
 def compute_loss(labels, predictions):
