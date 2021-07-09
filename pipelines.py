@@ -104,7 +104,7 @@ def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
         labels_to_stack = []
 
         for _data_idx in range(idx*batch_size, (idx+1)*batch_size):
-            
+            data_idx = idx_dataset[_data_idx]
             image, label = load_image_train(Dataset[data_idx])
             imgs_to_stack.append(image)
             labels_to_stack.append(label)
@@ -116,7 +116,7 @@ def batch_generator(Dataset, batch_size, shuffle=True, ignore_class = 255):
             idx_to_ignore = labels!=ignore_class
             labels = tf.where(idx_to_ignore, labels, 0)
 
-        yield images, labels
+        yield (images, labels)
 
 class _batch_generator: 
 
