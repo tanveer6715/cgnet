@@ -160,7 +160,7 @@ class CityscapesDatset:
         class_weight = 1 / np.log(1.02 + (median_freq/freq))
         class_weight[-1] = 0
 
-        np.save('class_weight_cityscapes1.npy', class_weight)
+        np.save('class_weight_cityscapes.npy', class_weight)
             
     
 
