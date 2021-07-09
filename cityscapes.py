@@ -156,6 +156,7 @@ class CityscapesDatset:
         median_freq = np.nanmedian(freq)
 
         #class_weight = np.divide(median_freq, freq)
+        # class weight from ENet paper 
         class_weight = 1 / np.log(1.02 + (median_freq/freq))
         class_weight[-1] = 0
 
