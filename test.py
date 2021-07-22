@@ -9,24 +9,24 @@ from tqdm import tqdm
 import cv2
 
 
-model = CGNet(classes=20)
+model = CGNet(classes=19)
 
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 optimizer = tf.keras.optimizers.Adam()
 
 test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
-test_iou = tf.keras.metrics.MeanIoU(num_classes=20, name='test_miou')
+test_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='test_miou')
 
 ## TODO we need to make argument input from command line 
 
-DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 # choose 'val' for validation or 'test' for test 
 cityscapes_dataset = CityscapesDatset(DATA_DIR, data_type = 'val')
 TEST_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TEST_LENGTH))
-model_weight_path = '/home/sss/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.07 add class weight/epoch_85.h5'
+model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.20 changing sep2d/epoch_276.h5'
 
 
 model.build((1, 680, 680, 3))

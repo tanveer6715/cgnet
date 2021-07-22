@@ -3,14 +3,13 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, UpSampling2D
 from tensorflow.keras import Model
 from tensorflow.keras.initializers import he_normal
-from tensorflow.keras.layers import BatchNormalization 
+from tensorflow.keras.layers.experimental import SyncBatchNormalization
 from tensorflow.keras.layers import PReLU
 from tensorflow.keras.layers import Concatenate
-from tensorflow.keras.layers import SeparableConv2D
 from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
-from tensorflow.keras.layers import Permute
 from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import ZeroPadding2D
 from pipelines import batch_generator
 
 from cityscapes import CityscapesDatset
@@ -20,7 +19,17 @@ Code Reference :
     https://github.com/wutianyiRosun/CGNet
 """
 
-initializer = tf.keras.initializers.he_normal()
+"""
+TODO
+
+1. Add a custom convolutional layer for specific padding size 
+2. Add a custom channelwiseconv for specific padding size 
+4. Add a custom ChannelWiseDilatedConv for specific padding size 
+"""
+
+initializer = he_normal()
+
+
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=initializer):
         """
@@ -30,9 +39,14 @@ class ConvBNPReLU(Model):
             stride: stride rate for down-sampling. Default is 1
         """
         super(ConvBNPReLU, self).__init__()
+        self.padding = padding
+        if self.padding == 'valid':
+            self.pad = ZeroPadding2D(1)
 
-        self.conv = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding, kernel_initializer=initializer )
-        self.bn = BatchNormalization(epsilon=1e-03)
+        self.conv = Conv2D(nOut, kSize, strides=(strides, strides), 
+                            padding=padding, kernel_initializer=initializer,
+                            use_bias=False )
+        self.bn = SyncBatchNormalization(epsilon=1e-03)
         self.PReLU = PReLU()
 
     def call(self, input):
@@ -41,6 +55,8 @@ class ConvBNPReLU(Model):
            input: input feature map
            return: transformed feature map
         """
+        if self.padding == 'valid' :
+            input = self.pad(input)
         output = self.conv(input)
         output = self.bn(output)
         output = self.PReLU(output)
@@ -54,7 +70,7 @@ class BNPReLU(Model):
            nOut: channels of output feature maps
         """
         super().__init__()
-        self.bn = BatchNormalization(epsilon=epsilon)
+        self.bn = SyncBatchNormalization(epsilon=epsilon)
         self.PReLU = PReLU()
 
     def call(self, input):
@@ -75,7 +91,7 @@ class FGlo(Model):
     def __init__(self, nOut, reduction=16):
         
         super(FGlo, self).__init__()
-        self.glob_avg_pool = GlobalAveragePooling2D()#fglo
+        self.glob_avg_pool = GlobalAveragePooling2D() #fglo
         self.FC1 = Dense(nOut // reduction, activation= 'relu')
         self.FC2 = Dense(nOut, activation= 'sigmoid') # sigmoid
     
@@ -99,11 +115,15 @@ class CGblock_down(Model):
         n= int(nOut/2)
         self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=2, padding='valid', kernel_initializer=initializer)
 
-        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None, kernel_initializer=initializer) #floc
-        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate, kernel_initializer=initializer) #fsur
+        self.F_loc = Conv2D(n, kSize, strides=(strides, strides), padding=padding,
+                                    activation=None, kernel_initializer=initializer, groups = n,
+                                    use_bias = False) #floc
+        self.F_sur = Conv2D(n, kSize, strides=(strides, strides), padding=padding, 
+                                    dilation_rate=dilation_rate, kernel_initializer=initializer, groups = n,
+                                    use_bias = False) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
-        self.reduce = Conv2D(nOut, 1, 1)
+        self.reduce = Conv2D(nOut, 1, 1, use_bias = False)
         self.FGLo = FGlo(nOut, reduction=reduction) #fglo
 
     def call(self, input):
@@ -131,8 +151,12 @@ class CGblock(Model):
         n= int(nOut/2)
         self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same', kernel_initializer=initializer)
 
-        self.F_loc = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding ,activation=None, kernel_initializer=initializer) #floc
-        self.F_sur = SeparableConv2D(n, kSize, strides=(strides, strides), padding=padding, dilation_rate=dilation_rate, kernel_initializer=initializer) #fsur
+        self.F_loc = Conv2D(n, kSize, strides=(strides, strides), padding=padding,
+                                    activation=None, kernel_initializer=initializer, groups=n,
+                                    use_bias = False) #floc
+        self.F_sur = Conv2D(n, kSize, strides=(strides, strides), padding=padding, 
+                                    dilation_rate=dilation_rate, kernel_initializer=initializer, groups=n,
+                                    use_bias = False) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU()
         self.FGLo = FGlo(nOut, reduction=reduction)#fglo
@@ -162,6 +186,7 @@ class InputInjection(Model):
         super(InputInjection, self).__init__()
         self.pool = []
         for i in range(0, downsamplingRatio):
+            self.pool.append(ZeroPadding2D(1))
             self.pool.append(AveragePooling2D(3, strides=2))
     def call(self, input):
         for pool in self.pool:
@@ -177,6 +202,7 @@ class CGNet(Model):
         """
         super(CGNet, self).__init__()
         #Stage 1
+        self.dropout_flag = dropout_flag
         self.stage1_1 = ConvBNPReLU(32, 3, strides=2, padding='valid')
         self.stage1_2 = ConvBNPReLU(32, 3)
         self.stage1_3 = ConvBNPReLU(32, 3)    
@@ -206,12 +232,14 @@ class CGNet(Model):
         self.bn3 = BNPReLU()
 
         #Classifier
-        if dropout_flag:
+        if self.dropout_flag:
             print("have droput layer")
-            self.classifier = tf.keras.Sequential(Dropout(0.1, False), Conv2D(classes, 1))
+            self.dropout = tf.keras.Sequential(Dropout(0.1, False))
+            self.classifier = tf.keras.Sequential(Conv2D(classes, 1, use_bias = False))
         else:
-            self.classifier = tf.keras.Sequential(Conv2D( classes, 1))
+            self.classifier = Conv2D(classes, 1, use_bias = False)
 
+        self.upsample = UpSampling2D(size=(8, 8), interpolation = 'bilinear')
         """
         TODO 
         1. add an initialization 
@@ -245,7 +273,7 @@ class CGNet(Model):
                 output2 = layer(output2)
 
         output2_cat = self.bn2(Concatenate()([output2, output2_1, inp2]))
-
+        
         # Stage 3 
         output3_1 = self.stage3_1(output2_cat)
 
@@ -256,11 +284,15 @@ class CGNet(Model):
                 output3 = layer(output3)
 
         output3_cat = self.bn3(Concatenate()([output3, output3_1]))
-
+        print("Stage 3 ends with {}".format(output3_cat.shape))
         # classifier 
+        if self.dropout_flag:
+            output3_cat = self.dropout(output3_cat)
+
         classifier = self.classifier(output3_cat)
 
         # upsample segmenation map ---> the input image size
-        out = tf.image.resize(classifier, (input.shape[1], input.shape[2]))
+        # out = tf.image.resize(classifier, (input.shape[1], input.shape[2]))
+        out = self.upsample(classifier)
 
         return out 

@@ -3,11 +3,11 @@ from re import VERBOSE
 import tensorflow as tf
 from cityscapes import CityscapesDatset
 from model import CGNet
-from pipelines import _batch_generator
+from pipelines import batch_generator
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm 
-
+import tensorflow_addons as tfa
 
 model = CGNet(classes = 19)
 
@@ -17,8 +17,8 @@ loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
 )
 
 class_weight = np.load('class_weight_cityscapes.npy', 'r')
-optimizer = tf.keras.optimizers.Adam()
 
+optimizer = tf.keras.optimizers.Adam()
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
 train_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='train_miou')
@@ -89,7 +89,7 @@ def compute_loss(lables, predictions):
 def train_step(images, labels,):
     with tf.GradientTape() as tape:
         predictions = model(images)
-        # loss = loss_object(labels, predictions)
+        #loss = loss_object(labels, predictions)
         loss = compute_loss(labels, predictions)
     """
     TODO 
@@ -111,13 +111,13 @@ def train_step(images, labels,):
 
 def train():
 
-    # model_weight_path = 'checkpoints/epoch_10.h5'
+    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.09 add class weight/epoch_20.h5'
 
-    # model.build((2, 680, 680, 3))
+    # model.build((4, 680, 680, 3))
     # model.load_weights(model_weight_path)
 
     for epoch in tqdm(range(EPOCHS)):
-        cityscapes_generator = _batch_generator(cityscapes_dataset, 2)
+        cityscapes_generator = batch_generator(cityscapes_dataset, 4)
 
         
         "TODO: add progress bar to training loop"
@@ -134,7 +134,7 @@ def train():
                                     train_iou.result()*100
                                     ))
         if epoch % 5 == 0 :
-            model.save_weights('checkpoints/epoch_{}.h5'.format(epoch))
+            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.10 checkpoints_no_weights/epoch_{}.h5'.format(epoch))
         
         # fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
         # fig.suptitle('Training Metrics')

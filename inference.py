@@ -13,12 +13,12 @@ from numpy import matlib
 import cv2
 
 
-model = CGNet(classes=20)
+model = CGNet(classes=19)
 
 
 ## TODO we need to make argument input from command line 
 
-DATA_DIR = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
 tf.executing_eagerly()
 
@@ -26,12 +26,12 @@ tf.executing_eagerly()
 cityscapes_dataset = CityscapesDatset(DATA_DIR, data_type = 'train')
 TEST_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TEST_LENGTH))
-model_weight_path = '/home/sss/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.07 add class weight/epoch_100.h5'
+model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.20 changing sep2d/epoch_276.h5'
 
 model.build((1, 680, 680, 3))
 model.load_weights(model_weight_path)
 
-img_idx = 110
+img_idx = 115
 
 image, label = load_image_test(cityscapes_dataset[img_idx])
 

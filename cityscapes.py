@@ -2,11 +2,13 @@
 import os
 import cv2 
 import random
-
+import tensorflow as tf
 import os.path as osp 
 import numpy as np 
 import cityscapesscripts.helpers.labels as CSLabels # to be deprecated 
-
+import imgaug as ia
+import imgaug.augmenters as iaa
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 from tqdm import tqdm
 from glob import glob 
 
@@ -36,7 +38,7 @@ class CityscapesDatset:
     """
 
 
-    def __init__(self, data_dir, data_type = 'train'):
+    def __init__(self, data_dir, data_type = 'train', crop_h=680, crop_w=680, ignore_label=255):
 
         self.classes = CLASSES
         self.palette = PALETTE
@@ -48,6 +50,10 @@ class CityscapesDatset:
 
         # load annotations
         self.img_infos = self.load_img_infos()
+
+        self.crop_h = crop_h
+        self.crop_w = crop_w
+        self.ignore_label = ignore_label
 
         
     def load_img_infos(self): 
@@ -151,19 +157,22 @@ class CityscapesDatset:
 
         np.seterr(divide='ignore', invalid='ignore')
         freq = np.divide(hist_sum, num_pxls_present)
-
-        freq = np.nan_to_num(freq)
-        if 'median' in mode :
-            divider = np.nanmedian(freq)
-        elif mode == 'mean' :
-            divider = np.nanmean(freq)
+        # class weight from ENet paper 
+        class_weight = 1 / np.log(1.02 + freq)
+        class_weight[-1] = 0
+        
+        # freq = np.nan_to_num(freq)
+        # if 'median' in mode :
+        #     divider = np.nanmedian(freq)
+        # elif mode == 'mean' :
+        #     divider = np.nanmean(freq)
 
         #class_weight = np.divide(median_freq, freq)
         # class weight from ENet paper 
-        class_weight = 1 / np.log(1.02 + (median_freq/freq))
+        class_weight = 1 / np.log(1.02 + (freq/freq))
         class_weight[-1] = 0
 
-        np.save('class_weight_cityscapes.npy', class_weight)
+    #     np.save('class_weight_cityscapes.npy', class_weight)
             
     
 
@@ -189,17 +198,19 @@ class CityscapesDatset:
         image = self.prepare_img(idx)
         label = self.prepare_seg_mask(idx)
 
+ 
         """
         Code Reference : 
         https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
         """
+        size = image.shape
 
-        f_scale = 0.5 + random.randint(0, 15) / 10.0  #random resize between 0.5 and 2 
+        f_scale = 1.0 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
+        
+
         image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
         label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
 
-        image = image[:, :, ::-1]  # change to BGR
-        image -= self.mean
         img_h, img_w = label.shape
         pad_h = max(self.crop_h - img_h, 0)
         pad_w = max(self.crop_w - img_w, 0)
@@ -219,13 +230,13 @@ class CityscapesDatset:
         # roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
         image = np.asarray(img_pad[h_off : h_off+self.crop_h, w_off : w_off+self.crop_w], np.float32)
         label = np.asarray(label_pad[h_off : h_off+self.crop_h, w_off : w_off+self.crop_w], np.float32)
-        
+
+
         data['image'] = image 
         data['segmentation_mask'] = label
-
+        
         return data
-
-
+        
 def test(): 
     data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
