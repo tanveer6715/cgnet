@@ -10,6 +10,7 @@ from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import ZeroPadding2D
+from tensorflow.keras.layers import Layer
 from pipelines import batch_generator
 
 from cityscapes import CityscapesDatset
@@ -29,8 +30,7 @@ TODO
 
 initializer = he_normal()
 
-
-class ConvBNPReLU(Model):
+class ConvBNPReLU(Layer):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=initializer):
         """
         args:
@@ -40,14 +40,15 @@ class ConvBNPReLU(Model):
         """
         super(ConvBNPReLU, self).__init__()
         self.padding = padding
-        if self.padding == 'valid':
+        self.kSize = kSize
+        if self.padding == 'valid' and self.kSize != 1:
             self.pad = ZeroPadding2D(1)
 
         self.conv = Conv2D(nOut, kSize, strides=(strides, strides), 
                             padding=padding, kernel_initializer=initializer,
-                            use_bias=False )
+                            use_bias=False)
         self.bn = SyncBatchNormalization(epsilon=1e-03)
-        self.PReLU = PReLU()
+        self.PReLU = PReLU(shared_axes=[1, 2])
 
     def call(self, input):
         """
@@ -55,7 +56,7 @@ class ConvBNPReLU(Model):
            input: input feature map
            return: transformed feature map
         """
-        if self.padding == 'valid' :
+        if self.padding == 'valid' and self.kSize != 1:
             input = self.pad(input)
         output = self.conv(input)
         output = self.bn(output)
@@ -71,7 +72,7 @@ class BNPReLU(Model):
         """
         super().__init__()
         self.bn = SyncBatchNormalization(epsilon=epsilon)
-        self.PReLU = PReLU()
+        self.PReLU = PReLU(shared_axes=[1, 2])
 
     def call(self, input):
         """
@@ -91,7 +92,8 @@ class FGlo(Model):
     def __init__(self, nOut, reduction=16):
         
         super(FGlo, self).__init__()
-        self.glob_avg_pool = GlobalAveragePooling2D() #fglo
+        
+        self.glob_avg_pool = GlobalAveragePooling2D(data_format='channels_last') #fglo
         self.FC1 = Dense(nOut // reduction, activation= 'relu')
         self.FC2 = Dense(nOut, activation= 'sigmoid') # sigmoid
     
@@ -113,7 +115,7 @@ class CGblock_down(Model):
         super(CGblock_down, self).__init__()
         
         n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=2, padding='valid', kernel_initializer=initializer)
+        self.ConvBNPReLU = ConvBNPReLU(n, 3, strides=2, padding='valid', kernel_initializer=initializer)
 
         self.F_loc = Conv2D(n, kSize, strides=(strides, strides), padding=padding,
                                     activation=None, kernel_initializer=initializer, groups = n,
@@ -149,7 +151,7 @@ class CGblock(Model):
         super(CGblock, self).__init__()
         
         n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, kSize, strides=1, padding='same', kernel_initializer=initializer)
+        self.ConvBNPReLU = ConvBNPReLU(n, 1, strides=1, padding='same', kernel_initializer=initializer)
 
         self.F_loc = Conv2D(n, kSize, strides=(strides, strides), padding=padding,
                                     activation=None, kernel_initializer=initializer, groups=n,
@@ -174,6 +176,8 @@ class CGblock(Model):
         output = Concatenate()([loc,sur])
         output = self.BNPReLU(output)
         output = self.FGLo(output)
+
+        output = input + output
 
         return output
 
@@ -202,6 +206,7 @@ class CGNet(Model):
         """
         super(CGNet, self).__init__()
         #Stage 1
+        
         self.dropout_flag = dropout_flag
         self.stage1_1 = ConvBNPReLU(32, 3, strides=2, padding='valid')
         self.stage1_2 = ConvBNPReLU(32, 3)
@@ -214,7 +219,7 @@ class CGNet(Model):
 
         # First CG block (M=3) dilation=2
         #Stage 2
-        self.stage2_1 = CGblock_down(32, 3, dilation_rate=2, reduction=8)
+        self.stage2_1 = CGblock_down(64, 3, dilation_rate=2, reduction=8)
         self.stage2 = []
 
         for i in range(0, M-1): 
@@ -244,7 +249,7 @@ class CGNet(Model):
         TODO 
         1. add an initialization 
         """
-
+       
             
     def call(self, input):
 
@@ -296,3 +301,32 @@ class CGNet(Model):
         out = self.upsample(classifier)
 
         return out 
+
+
+model = CGNet()
+#_ = model(tf.zeros([680,680]))
+_ = model.build((1,680,680,3))   
+model.summary()
+lyr_idx = 14
+idx = 0
+tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())
+
+from tensorflow.python.framework.convert_to_constants import  convert_variables_to_constants_v2_as_graph
+
+def get_flops(model):
+    concrete = tf.function(lambda inputs: model(inputs))
+    concrete_func = concrete.get_concrete_function(
+        [tf.TensorSpec([1, *inputs.shape[1:]]) for inputs in model.inputs])
+    frozen_func, graph_def = convert_variables_to_constants_v2_as_graph(concrete_func)
+    with tf.Graph().as_default() as graph:
+        tf.graph_util.import_graph_def(graph_def, name='')
+        run_meta = tf.compat.v1.RunMetadata()
+        opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+        flops = tf.compat.v1.profiler.profile(graph=graph, run_meta=run_meta, cmd="op", options=opts)
+        return flops.total_float_ops
+
+# model = tf.keras.models.Sequential()
+# model.add(tf.keras.Input(shape=(10, 1)))
+# model.add(tf.keras.layers.Conv1D(2, 3, activation='relu'))
+# model.summary()
+print("The FLOPs is:{}".format(get_flops(model)) ,flush=True )

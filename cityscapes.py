@@ -38,7 +38,7 @@ class CityscapesDatset:
     """
 
 
-    def __init__(self, data_dir, data_type = 'train', crop_h=680, crop_w=680, ignore_label=255):
+    def __init__(self, data_dir, data_type = 'train'):
 
         self.classes = CLASSES
         self.palette = PALETTE
@@ -48,12 +48,9 @@ class CityscapesDatset:
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
 
+       
         # load annotations
         self.img_infos = self.load_img_infos()
-
-        self.crop_h = crop_h
-        self.crop_w = crop_w
-        self.ignore_label = ignore_label
 
         
     def load_img_infos(self): 
@@ -132,34 +129,34 @@ class CityscapesDatset:
             seg_copy[seg == label.id] = label.trainId
         return seg_copy
 
-    @staticmethod
-    def _get_class_weight(data_dir):
-        """get class weight of cityscapes dataset 
+    # @staticmethod
+    # def _get_class_weight(data_dir):
+    #     """get class weight of cityscapes dataset 
         
         
-        """
-        cityscapes_dataset = CityscapesDatset(data_dir)
-        img_infos = cityscapes_dataset.img_infos
+    #     """
+    #     cityscapes_dataset = CityscapesDatset(data_dir)
+    #     img_infos = cityscapes_dataset.img_infos
 
-        data_length = len(cityscapes_dataset)
+    #     data_length = len(cityscapes_dataset)
         
-        hist_sum = np.zeros(20)
-        num_pxls_present = np.zeros(20)
+    #     hist_sum = np.zeros(20)
+    #     num_pxls_present = np.zeros(20)
 
-        for idx in tqdm(range(100)): 
-            data = cityscapes_dataset[idx]
-            segmentation_mask = data['segmentation_mask']
-            hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20])
-            hist_sum = hist_sum + hist
-            class_existence_map = np.array(hist, dtype = bool)
-            num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
-            num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
+    #     for idx in tqdm(range(100)): 
+    #         data = cityscapes_dataset[idx]
+    #         segmentation_mask = data['segmentation_mask']
+    #         hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20])
+    #         hist_sum = hist_sum + hist
+    #         class_existence_map = np.array(hist, dtype = bool)
+    #         num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
+    #         num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
 
-        np.seterr(divide='ignore', invalid='ignore')
-        freq = np.divide(hist_sum, num_pxls_present)
-        # class weight from ENet paper 
-        class_weight = 1 / np.log(1.02 + freq)
-        class_weight[-1] = 0
+    #     np.seterr(divide='ignore', invalid='ignore')
+    #     freq = np.divide(hist_sum, num_pxls_present)
+    #     # class weight from ENet paper 
+    #     class_weight = 1 / np.log(1.02 + freq)
+    #     class_weight[-1] = 0
         
         # freq = np.nan_to_num(freq)
         # if 'median' in mode :
@@ -167,10 +164,7 @@ class CityscapesDatset:
         # elif mode == 'mean' :
         #     divider = np.nanmean(freq)
 
-        #class_weight = np.divide(median_freq, freq)
-        # class weight from ENet paper 
-        class_weight = 1 / np.log(1.02 + (freq/freq))
-        class_weight[-1] = 0
+        
 
     #     np.save('class_weight_cityscapes.npy', class_weight)
             
@@ -203,34 +197,44 @@ class CityscapesDatset:
         Code Reference : 
         https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
         """
-        size = image.shape
-
-        f_scale = 1.0 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
         
+        f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
+            
+        img_h, img_w = label.shape
 
         image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
         label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
 
-        img_h, img_w = label.shape
-        pad_h = max(self.crop_h - img_h, 0)
-        pad_w = max(self.crop_w - img_w, 0)
-        if pad_h > 0 or pad_w > 0:
-            img_pad = cv2.copyMakeBorder(image, 0, pad_h, 0, 
-                pad_w, cv2.BORDER_CONSTANT, 
-                value=(0.0, 0.0, 0.0))
-            label_pad = cv2.copyMakeBorder(label, 0, pad_h, 0, 
-                pad_w, cv2.BORDER_CONSTANT,
-                value=(self.ignore_label,))
-        else:
-            img_pad, label_pad = image, label
+        img_h_rsz, img_w_rsz = label.shape
 
-        img_h, img_w = label_pad.shape
-        h_off = random.randint(0, img_h - self.crop_h)
-        w_off = random.randint(0, img_w - self.crop_w)
-        # roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
-        image = np.asarray(img_pad[h_off : h_off+self.crop_h, w_off : w_off+self.crop_w], np.float32)
-        label = np.asarray(label_pad[h_off : h_off+self.crop_h, w_off : w_off+self.crop_w], np.float32)
+        h_off = random.randint(0, img_h_rsz - img_h)
+        w_off = random.randint(0, img_w_rsz - img_w)
+        #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
+        image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        
+        
+        if np.random.uniform() > 0.5 : 
+            image = image*np.random.uniform(0.75, 1.25)
+        
 
+        # label = SegmentationMapsOnImage(label, shape=image.shape)
+        
+        # seq = iaa.Sequential(
+        #     [ 
+        #         iaa.SomeOf((0, 5),
+        #             [
+        #                 iaa.Affine(rotate=(-30, 30)),
+        #                 iaa.Multiply((0.75, 1.25), per_channel=0.5),
+        #             ],
+        #         )
+        #     ],
+        # )
+        
+        
+
+        # image, label= seq(image=image, segmentation_maps=label)
+        
 
         data['image'] = image 
         data['segmentation_mask'] = label

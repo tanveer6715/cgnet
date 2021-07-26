@@ -39,6 +39,7 @@ def _compute_loss(labels, predictions, ignore_class = 255):
     weight_map = tf.ones_like(labels, dtype=float)
     weight_map = tf.squeeze(weight_map)
 
+
     # detach labels with 255 
     for idx in range(19):
         # for indexing not_equal has to be used...
@@ -93,6 +94,7 @@ def distributed_train_step(dist_inputs):
     per_replica_losses = mirrored_strategy.run(train_step, args=(dist_inputs,))
     return mirrored_strategy.reduce("MEAN", per_replica_losses,
                         axis=None)
+    
 
 
 def gen():
@@ -117,15 +119,17 @@ with mirrored_strategy.scope():
     loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits = True,
         reduction=tf.keras.losses.Reduction.NONE
-    )
 
+    )
+    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.24 hp/epoch_136.h5'
+    # model.build((2, 680, 680, 3))
+    # model.load_weights(model_weight_path)
 #class_weight = np.load('class_weight_cityscapes_210711.npy', 'r')
 #print(class_weight)
 class_weight=[  2.5959933, 6.7415504, 3.5354059, 9.8663225, 9.690899, 9.369352,
                 10.289121, 9.953208, 4.3097677, 9.490387, 7.674431, 9.396905,
                 10.347791, 6.3927646, 10.226669, 10.241062, 10.280587,
-                10.396974, 10.0556   ]
-
+                10.396974, 10.055647   ]
 print(class_weight)
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -166,10 +170,10 @@ iterator = iter(dist_cityscapes)
 
 
 for epoch in tqdm(range(1, EPOCHS + 1)):
-
+   
     for step in range(1, num_steps+1):
         distributed_train_step(next(iterator))
-
+        
         if step % 5 == 1 : 
             template = 'Epoch: {}/{}, Steps :{}/{}, Loss: {:f}, Accuracy: {:f}, MeanIoU: {:f}'
 
@@ -182,7 +186,7 @@ for epoch in tqdm(range(1, EPOCHS + 1)):
                                     train_iou.result()*100
                                     ))
     if epoch % 5 == 1 :
-        model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.22 fix_upsampling/epoch_{}.h5'.format(epoch))
+        model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.24 hp/epoch_{}.h5'.format(epoch))
 
 
 """
