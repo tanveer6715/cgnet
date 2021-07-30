@@ -30,7 +30,7 @@ TODO
 
 initializer = he_normal()
 
-class ConvBNPReLU(Layer):
+class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=initializer):
         """
         args:
@@ -48,7 +48,7 @@ class ConvBNPReLU(Layer):
                             padding=padding, kernel_initializer=initializer,
                             use_bias=False)
         self.bn = SyncBatchNormalization(epsilon=1e-03)
-        self.PReLU = PReLU(shared_axes=[1, 2])
+        self.PReLU = PReLU(shared_axes=[1,2])
 
     def call(self, input):
         """
@@ -72,7 +72,7 @@ class BNPReLU(Model):
         """
         super().__init__()
         self.bn = SyncBatchNormalization(epsilon=epsilon)
-        self.PReLU = PReLU(shared_axes=[1, 2])
+        self.PReLU = PReLU(shared_axes=[1,2])
 
     def call(self, input):
         """
@@ -114,14 +114,15 @@ class CGblock_down(Model):
         
         super(CGblock_down, self).__init__()
         
-        n= int(nOut/2)
-        self.ConvBNPReLU = ConvBNPReLU(n, 3, strides=2, padding='valid', kernel_initializer=initializer)
+        #n= int(nOut/2)
+        
+        self.ConvBNPReLU = ConvBNPReLU(nOut, 3, strides=2, padding='valid', kernel_initializer=initializer)
 
-        self.F_loc = Conv2D(n, kSize, strides=(strides, strides), padding=padding,
-                                    activation=None, kernel_initializer=initializer, groups = n,
+        self.F_loc = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding,
+                                    activation=None, kernel_initializer=initializer, groups = nOut,
                                     use_bias = False) #floc
-        self.F_sur = Conv2D(n, kSize, strides=(strides, strides), padding=padding, 
-                                    dilation_rate=dilation_rate, kernel_initializer=initializer, groups = n,
+        self.F_sur = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding, 
+                                    dilation_rate=dilation_rate, kernel_initializer=initializer, groups = nOut,
                                     use_bias = False) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
@@ -311,22 +312,29 @@ lyr_idx = 14
 idx = 0
 tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())
 
-from tensorflow.python.framework.convert_to_constants import  convert_variables_to_constants_v2_as_graph
+# from tensorflow.python.framework.convert_to_constants import  convert_variables_to_constants_v2_as_graph
 
-def get_flops(model):
-    concrete = tf.function(lambda inputs: model(inputs))
-    concrete_func = concrete.get_concrete_function(
-        [tf.TensorSpec([1, *inputs.shape[1:]]) for inputs in model.inputs])
-    frozen_func, graph_def = convert_variables_to_constants_v2_as_graph(concrete_func)
-    with tf.Graph().as_default() as graph:
-        tf.graph_util.import_graph_def(graph_def, name='')
-        run_meta = tf.compat.v1.RunMetadata()
-        opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
-        flops = tf.compat.v1.profiler.profile(graph=graph, run_meta=run_meta, cmd="op", options=opts)
-        return flops.total_float_ops
+# def get_flops(model):
+#     concrete = tf.function(lambda inputs: model(inputs))
+#     concrete_func = concrete.get_concrete_function(
+#          [tf.TensorSpec([1, *inputs.shape[1:]]) for inputs in model.inputs])
+#     frozen_func, graph_def = convert_variables_to_constants_v2_as_graph(concrete_func)
+#     with tf.Graph().as_default() as graph:
+#         tf.graph_util.import_graph_def(graph_def, name='')
+#         run_meta = tf.compat.v1.RunMetadata()
+#         opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+#         flops = tf.compat.v1.profiler.profile(graph=graph, run_meta=run_meta, cmd="op", options=opts)
+#         return flops.total_float_ops
 
-# model = tf.keras.models.Sequential()
-# model.add(tf.keras.Input(shape=(10, 1)))
-# model.add(tf.keras.layers.Conv1D(2, 3, activation='relu'))
-# model.summary()
-print("The FLOPs is:{}".format(get_flops(model)) ,flush=True )
+# # model = tf.keras.models.Sequential()
+# # model.add(tf.keras.Input(shape=(10, 1)))
+# # model.add(tf.keras.layers.Conv1D(2, 3, activation='relu'))
+# # model.summary()
+# print("The FLOPs is:{}".format(get_flops(model)) ,flush=True )
+
+# from model_profiler import model_profiler
+
+# Batch_size = 1
+# profile = model_profiler(CGNet(), Batch_size)
+
+# print(profile)

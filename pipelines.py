@@ -40,9 +40,6 @@ def load_image_train(datapoint, size=(680, 680)):
         input_image = tf.image.flip_left_right(input_image)
         input_mask = tf.image.flip_left_right(input_mask)
 
-    # if tf.random.uniform(()) > 0.7:
-    #     input_image =  iaa.Affine( input_image,scale=(0.5, 1.5))
-    #     input_mask =  iaa.Affine(input_mask,scale=(0.5, 1.5))
 
 
     input_image, input_mask = normalize(input_image, input_mask)
@@ -156,6 +153,9 @@ class _batch_generator:
         images = tf.stack(imgs_to_stack)
         labels = tf.stack(labels_to_stack)
 
+        if self.ignore_class : 
+            idx_to_ignore = labels!= self.ignore_class
+            labels = tf.where(idx_to_ignore, labels, 0)
         
         return images, labels
 

@@ -175,7 +175,7 @@ for epoch in tqdm(range(1, EPOCHS + 1)):
         distributed_train_step(next(iterator))
         
         if step % 5 == 1 : 
-            template = 'Epoch: {}/{}, Steps :{}/{}, Loss: {:f}, Accuracy: {:f}, MeanIoU: {:f}'
+            template = 'Epoch: {}/{}, Loss: {:f}, Accuracy: {:f}, MeanIoU: {:2f}'
 
             print (template.format(epoch,
                                     EPOCHS,

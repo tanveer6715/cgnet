@@ -4,19 +4,28 @@ import tensorflow as tf
 from cityscapes import CityscapesDatset
 from model import CGNet
 from pipelines import batch_generator
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm 
 import tensorflow_addons as tfa
 
 model = CGNet(classes = 19)
+learning_rate = tf.keras.optimizers.schedules.PolynomialDecay(0.001, 60000, 
+                                                            end_learning_rate=0.0001, power=0.9,
+                                                            cycle=False, name=None)
 
-
+optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1= 0.9, beta_2= 0.999, epsilon= 1e-08)
 loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
+    from_logits = True,
     reduction=tf.keras.losses.Reduction.NONE
 )
 
-class_weight = np.load('class_weight_cityscapes.npy', 'r')
+#class_weight = np.load('class_weight_cityscapes.npy', 'r')
+
+class_weight=[  2.5959933, 6.7415504, 3.5354059, 9.8663225, 9.690899, 9.369352,
+                10.289121, 9.953208, 4.3097677, 9.490387, 7.674431, 9.396905,
+                10.347791, 6.3927646, 10.226669, 10.241062, 10.280587,
+                10.396974, 10.055647   ]
+print(class_weight)
 
 optimizer = tf.keras.optimizers.Adam()
 train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -111,12 +120,12 @@ def train_step(images, labels,):
 
 def train():
 
-    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.09 add class weight/epoch_20.h5'
+    model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_230.h5'
 
-    # model.build((4, 680, 680, 3))
-    # model.load_weights(model_weight_path)
+    model.build((4, 680, 680, 3))
+    model.load_weights(model_weight_path)
 
-    for epoch in tqdm(range(EPOCHS)):
+    for epoch in tqdm(range(230,EPOCHS)):
         cityscapes_generator = batch_generator(cityscapes_dataset, 4)
 
         
@@ -124,17 +133,15 @@ def train():
         for images, labels in cityscapes_generator:
             
             train_step(images, labels)
-
-
         
-            template = 'Epoch: {}, Loss: {}, Accuracy: {}, MeanIoU: {}'
+            template = 'Epoch: {}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
             print (template.format(epoch+1,
                                     train_loss.result(),
                                     train_accuracy.result()*100,
                                     train_iou.result()*100
                                     ))
         if epoch % 5 == 0 :
-            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.10 checkpoints_no_weights/epoch_{}.h5'.format(epoch))
+            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_{}.h5'.format(epoch))
         
         # fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
         # fig.suptitle('Training Metrics')

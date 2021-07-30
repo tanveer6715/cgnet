@@ -48,7 +48,6 @@ class CityscapesDatset:
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
 
-       
         # load annotations
         self.img_infos = self.load_img_infos()
 
@@ -197,13 +196,13 @@ class CityscapesDatset:
         Code Reference : 
         https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
         """
-        
         f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
             
         img_h, img_w = label.shape
 
         image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
         label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
+        
 
         img_h_rsz, img_w_rsz = label.shape
 
@@ -214,26 +213,10 @@ class CityscapesDatset:
         label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
         
         
+        
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
-        
-
-        # label = SegmentationMapsOnImage(label, shape=image.shape)
-        
-        # seq = iaa.Sequential(
-        #     [ 
-        #         iaa.SomeOf((0, 5),
-        #             [
-        #                 iaa.Affine(rotate=(-30, 30)),
-        #                 iaa.Multiply((0.75, 1.25), per_channel=0.5),
-        #             ],
-        #         )
-        #     ],
-        # )
-        
-        
-
-        # image, label= seq(image=image, segmentation_maps=label)
+    
         
 
         data['image'] = image 
