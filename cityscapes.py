@@ -211,7 +211,7 @@ class CityscapesDatset:
         #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
         image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
         label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
-        
+        print('Is it Tanveer?')
         
         
         if np.random.uniform() > 0.5 : 
