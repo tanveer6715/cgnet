@@ -46,20 +46,16 @@ class CityscapesDatset:
     """
 
 
-    def __init__(self, data_dir, data_type = 'train',crop_size=(680,680), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255 ):
+    def __init__(self, data_dir):
 
         self.classes = CLASSES
         self.palette = PALETTE
         self.data_dir = data_dir
-        self.img_dir = osp.join(data_dir, 'leftImg8bit_trainvaltest/leftImg8bit', data_type)
-        self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine', data_type)
+        self.img_dir = osp.join(data_dir, 'leftImg8bit_trainvaltest/leftImg8bit')
+        self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine')
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
-        self.crop_h, self.crop_w = crop_size
-        self.scale = scale
-        self.ignore_label = ignore_label
-        self.mean = mean
-        self.is_mirror = mirror
+
         # load annotations
         self.img_infos = self.load_img_infos()
 
@@ -127,7 +123,7 @@ class CityscapesDatset:
         seg_prefix = seg_filename.split('_')[0]
 
         seg_path = osp.join(self.ann_dir, seg_prefix, seg_filename)
-        seg = cv2.imread(seg_path, cv2.IMREAD_GRAYSCALE)
+        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
 
         return CityscapesDatset._convert_to_label_id(seg)
 
@@ -139,8 +135,8 @@ class CityscapesDatset:
             # print(label.name)
             seg_copy[seg == label.id] = label.trainId
         return seg_copy
-            
     
+
     def __len__ (self) : 
 
         return len(self.img_infos)
@@ -168,6 +164,7 @@ class CityscapesDatset:
         Code Reference : 
         https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
         """
+        
         f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
             
         img_h, img_w = label.shape
@@ -188,20 +185,16 @@ class CityscapesDatset:
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
         
-        if np.random.uniform() > 0.7 :
-            image = np.fliplr(image)
-            label = np.fliplr(label)
-
-        if np.random.uniform() > 0.4 :
-            image = np.flipud(image)
-            label = np.flipud(label)        
-        
-        
         data['image'] = image 
         data['segmentation_mask'] = label
         
         return data
         
-if __name__ == "__main__" : 
+def test(): 
     data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
+
+    return None 
+
+if __name__ == "__main__" : 
+    test()
