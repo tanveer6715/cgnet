@@ -5,10 +5,10 @@ import numpy as np
 
 from cityscapes import CityscapesDatset
 from model import CGNet
-from pipelines import batch_generator
+from pipeline import batch_generator
 from tqdm import tqdm 
 
-from pipelines import load_image_test
+from pipeline import load_image_test
 from numpy import matlib
 import cv2
 
@@ -26,7 +26,7 @@ tf.executing_eagerly()
 cityscapes_dataset = CityscapesDatset(DATA_DIR, data_type = 'train')
 TEST_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TEST_LENGTH))
-model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.07 dropout/epoch_301.h5'
+model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_240.h5'
 
 model.build((1, 680, 680, 3))
 model.load_weights(model_weight_path)

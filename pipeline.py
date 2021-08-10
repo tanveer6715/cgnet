@@ -36,9 +36,9 @@ def load_image_train(datapoint, size=(680,680)):
 
     # #TODO: add more augmentation 
     
-    # if tf.random.uniform(()) > 0.5:
-    #     image = tf.image.flip_left_right(image)
-    #     label = tf.image.flip_left_right(label)
+    if tf.random.uniform(()) > 0.5:
+        image = tf.image.flip_left_right(image)
+        label = tf.image.flip_left_right(label)
     
         
 

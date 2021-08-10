@@ -46,7 +46,7 @@ class CityscapesDatset:
     """
 
 
-    def __init__(self, data_dir, data_type = 'train',crop_size=(680,680), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255 ):
+    def __init__(self, data_dir, data_type = 'train'):
 
         self.classes = CLASSES
         self.palette = PALETTE
@@ -55,11 +55,6 @@ class CityscapesDatset:
         self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine', data_type)
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
-        self.crop_h, self.crop_w = crop_size
-        self.scale = scale
-        self.ignore_label = ignore_label
-        self.mean = mean
-        self.is_mirror = mirror
         # load annotations
         self.img_infos = self.load_img_infos()
 
@@ -127,7 +122,7 @@ class CityscapesDatset:
         seg_prefix = seg_filename.split('_')[0]
 
         seg_path = osp.join(self.ann_dir, seg_prefix, seg_filename)
-        seg = cv2.imread(seg_path, cv2.IMREAD_GRAYSCALE)
+        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
 
         return CityscapesDatset._convert_to_label_id(seg)
 
@@ -188,13 +183,13 @@ class CityscapesDatset:
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
         
-        if np.random.uniform() > 0.7 :
-            image = np.fliplr(image)
-            label = np.fliplr(label)
+        # if np.random.uniform() > 0.7 :
+        #     image = np.fliplr(image)
+        #     label = np.fliplr(label)
 
-        if np.random.uniform() > 0.4 :
-            image = np.flipud(image)
-            label = np.flipud(label)        
+        # if np.random.uniform() > 0.4 :
+        #     image = np.flipud(image)
+        #     label = np.flipud(label)        
         
         
         data['image'] = image 

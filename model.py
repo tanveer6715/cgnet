@@ -11,7 +11,6 @@ from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import ZeroPadding2D
-from tensorflow.keras.regularizers import L1L2
 """
 Code Reference : 
     https://github.com/wutianyiRosun/CGNet
@@ -26,7 +25,7 @@ TODO
 """
 __all__ = ["CGNet"]  
 kernel_initializer = he_normal()
-#kernel_regularizer = L1L2()
+
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=kernel_initializer):
         """
@@ -112,10 +111,10 @@ class CGblock_down(Model):
         
         self.ConvBNPReLU = ConvBNPReLU(nOut, kSize, strides=2, padding='valid',kernel_initializer= kernel_initializer)
         self.F_loc = Conv2D(nOut, kSize, strides=(strides, strides), padding=padding,
-                                    activation=None, kernel_initializer=kernel_initializer, groups = nOut, 
+                                    activation=None, kernel_initializer=kernel_initializer, groups = nOut,
                                     use_bias = False) #floc
         self.F_sur = Conv2D(nOut,kSize, strides=(strides, strides), padding=padding, 
-                                    dilation_rate=dilation_rate, kernel_initializer=kernel_initializer, groups = nOut, 
+                                    dilation_rate=dilation_rate, kernel_initializer=kernel_initializer, groups = nOut,
                                     use_bias = False) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
@@ -147,10 +146,10 @@ class CGblock(Model):
         n= int(nOut/2)
         self.ConvBNPReLU = ConvBNPReLU(n, 1, strides=1, padding='same',kernel_initializer=kernel_initializer) 
         self.F_loc = Conv2D(n, 3, strides=(strides, strides), padding=padding,
-                                    activation=None,kernel_initializer=kernel_initializer, groups=n,  
+                                    activation=None,kernel_initializer=kernel_initializer, groups=n,
                                     use_bias = False) #floc
         self.F_sur = Conv2D(n, 3, strides=(strides, strides), padding=padding, 
-                                    dilation_rate=dilation_rate,kernel_initializer=kernel_initializer, groups=n, 
+                                    dilation_rate=dilation_rate,kernel_initializer=kernel_initializer, groups=n,
                                     use_bias = False) #fsur
         self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(epsilon=epsilon)
@@ -195,7 +194,7 @@ class InputInjection(Model):
 
 
 class CGNet(Model):
-    def __init__(self, classes=19, M= 3, N= 21, dropout_flag = True):
+    def __init__(self, classes=19, M= 3, N= 21, dropout_flag = False):
         """
 
         """
@@ -234,7 +233,7 @@ class CGNet(Model):
         #Classifier
         if self.dropout_flag:
             print("have droput layer")
-            self.dropout = tf.keras.Sequential(Dropout(0.4, True))
+            self.dropout = tf.keras.Sequential(Dropout(0.4, False))
             self.classifier = tf.keras.Sequential(Conv2D(classes, 1, use_bias = False))
         else:
             self.classifier = Conv2D(classes,1, use_bias = False)
@@ -309,4 +308,3 @@ model_functional.summary()
 # lyr_idx = 14
 # idx = 0
 # tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())
-

@@ -96,9 +96,6 @@ with mirrored_strategy.scope():
         from_logits = True,
         reduction=tf.keras.losses.Reduction.NONE)
     
-    # loss_object =SparseCategoricalFocalLoss(gamma =2,
-    #     from_logits = True,
-    #     reduction=tf.keras.losses.Reduction.NONE)
 
     # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.24 hp/epoch_276.h5'
     # model.build((2, 680, 680, 3))
@@ -169,7 +166,7 @@ for epoch in tqdm(range(1, EPOCHS + 1)):
                                     train_iou.result()*100
                                     ))
     if epoch % 5 == 1 :
-        model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.09 dropout/epoch_{}.h5'.format(epoch))
+        model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.10 test/epoch_{}.h5'.format(epoch))
 
 
 """
