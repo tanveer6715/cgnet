@@ -305,6 +305,6 @@ model_functional = model.model()
 #model.build((None, 32,32,3))
 model_functional.summary()
 
-# lyr_idx = 14
+ lyr_idx = 14
 # idx = 0
 # tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())
