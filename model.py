@@ -202,9 +202,9 @@ class CGNet(Model):
         #Stage 1
         
         self.dropout_flag = dropout_flag
-        self.stage1_1 = ConvBNPReLU(32,3,2,kernel_initializer=kernel_initializer) 
-        self.stage1_2 = ConvBNPReLU(32, 3,1,kernel_initializer=kernel_initializer) 
-        self.stage1_3 = ConvBNPReLU(32, 3,1,kernel_initializer=kernel_initializer)
+        self.stage1_1 = ConvBNPReLU(32, 3, strides=2, padding='valid') 
+        self.stage1_2 = ConvBNPReLU(32, 3,1) 
+        self.stage1_3 = ConvBNPReLU(32, 3,1)
 
         self.sample1 = InputInjection(1)  #down-sample for Input Injection, factor=2
         self.sample2 = InputInjection(2)
