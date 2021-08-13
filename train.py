@@ -3,29 +3,38 @@ from re import VERBOSE
 import tensorflow as tf
 from cityscapes import CityscapesDatset
 from model import CGNet
-from pipelines import batch_generator
-import matplotlib.pyplot as plt
+from pipeline import batch_generator
 import numpy as np
 from tqdm import tqdm 
-import tensorflow_addons as tfa
+
 
 model = CGNet(classes = 19)
+learning_rate = tf.keras.optimizers.schedules.PolynomialDecay(0.001, 60000, 
+                                                            end_learning_rate=0.0001, power=0.9,
+                                                            cycle=False, name=None)
 
-
+optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1= 0.9, beta_2= 0.999, epsilon= 1e-08)
 loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
+    from_logits = True,
     reduction=tf.keras.losses.Reduction.NONE
 )
 
-class_weight = np.load('class_weight_cityscapes.npy', 'r')
+#class_weight = np.load('class_weight_cityscapes.npy', 'r')
 
-optimizer = tf.keras.optimizers.Adam()
+class_weight=[  2.5959933, 6.7415504, 3.5354059, 9.8663225, 9.690899, 9.369352,
+                10.289121, 9.953208, 4.3097677, 9.490387, 7.674431, 9.396905,
+                10.347791, 6.3927646, 10.226669, 10.241062, 10.280587,
+                10.396974, 10.055647   ]
+print(class_weight)
+
+optimizer = tf.keras.optimizers.SGD()
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
 train_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='train_miou')
 
 ## TODO we need to make argument input from command line 
 
-EPOCHS = 280
+EPOCHS = 325
 
 DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
 
@@ -47,7 +56,7 @@ make options for variables
 
 """
 
-@tf.function
+#@tf.function
 def compute_loss(lables, predictions): 
     loss = loss_object(lables, predictions)
     weight_map = tf.ones_like(loss)
@@ -85,7 +94,7 @@ def compute_loss(lables, predictions):
 
 
 
-@tf.function
+#@tf.function
 def train_step(images, labels,):
     with tf.GradientTape() as tape:
         predictions = model(images)
@@ -111,12 +120,12 @@ def train_step(images, labels,):
 
 def train():
 
-    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.09 add class weight/epoch_20.h5'
+    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_230.h5'
 
     # model.build((4, 680, 680, 3))
     # model.load_weights(model_weight_path)
 
-    for epoch in tqdm(range(EPOCHS)):
+    for epoch in tqdm(range(1,EPOCHS)):
         cityscapes_generator = batch_generator(cityscapes_dataset, 4)
 
         
@@ -124,27 +133,16 @@ def train():
         for images, labels in cityscapes_generator:
             
             train_step(images, labels)
-
-
         
-            template = 'Epoch: {}, Loss: {}, Accuracy: {}, MeanIoU: {}'
+            template = 'Epoch: {}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
             print (template.format(epoch+1,
                                     train_loss.result(),
                                     train_accuracy.result()*100,
                                     train_iou.result()*100
                                     ))
         if epoch % 5 == 0 :
-            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.10 checkpoints_no_weights/epoch_{}.h5'.format(epoch))
-        
-        # fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-        # fig.suptitle('Training Metrics')
-        # axes[0].set_ylabel("Loss", fontsize=14)
-        # axes[0].plot(train_loss.result())
+            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_{}.h5'.format(epoch))
 
-        # axes[1].set_ylabel("Accuracy", fontsize=14)
-        # axes[1].set_xlabel("Epoch", fontsize=14)
-        # axes[1].plot(train_accuracy.result())
-        # plt.show()
 
 
 if __name__ == "__main__" : 
