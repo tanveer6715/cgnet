@@ -5,12 +5,20 @@ import random
 import tensorflow as tf
 import os.path as osp 
 import numpy as np 
-import cityscapesscripts.helpers.labels as CSLabels # to be deprecated 
-import imgaug as ia
-import imgaug.augmenters as iaa
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
 from tqdm import tqdm
 from glob import glob 
+
+
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+   tf.config.experimental.set_memory_growth(physical_devices[0], True)
+   tf.config.experimental.set_memory_growth(physical_devices[1], True)
+   tf.config.experimental.set_memory_growth(physical_devices[2], True)
+   tf.config.experimental.set_memory_growth(physical_devices[3], True)
+except:
+  # Invalid device or cannot modify virtual devices once initialized.
+  pass
 
 CLASSES = ('road', 'sidewalk', 'building', 'wall', 
             'fence', 'pole', 'traffic light', 'traffic sign',
@@ -47,7 +55,6 @@ class CityscapesDatset:
         self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine', data_type)
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
-
         # load annotations
         self.img_infos = self.load_img_infos()
 
@@ -127,48 +134,8 @@ class CityscapesDatset:
             # print(label.name)
             seg_copy[seg == label.id] = label.trainId
         return seg_copy
-
-    # @staticmethod
-    # def _get_class_weight(data_dir):
-    #     """get class weight of cityscapes dataset 
-        
-        
-    #     """
-    #     cityscapes_dataset = CityscapesDatset(data_dir)
-    #     img_infos = cityscapes_dataset.img_infos
-
-    #     data_length = len(cityscapes_dataset)
-        
-    #     hist_sum = np.zeros(20)
-    #     num_pxls_present = np.zeros(20)
-
-    #     for idx in tqdm(range(100)): 
-    #         data = cityscapes_dataset[idx]
-    #         segmentation_mask = data['segmentation_mask']
-    #         hist, _ = np.histogram(segmentation_mask, bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14, 15, 16, 17, 18, 19, 20])
-    #         hist_sum = hist_sum + hist
-    #         class_existence_map = np.array(hist, dtype = bool)
-    #         num_of_pxls = segmentation_mask.shape[0]*segmentation_mask.shape[1]
-    #         num_pxls_present = num_pxls_present + class_existence_map*num_of_pxls
-
-    #     np.seterr(divide='ignore', invalid='ignore')
-    #     freq = np.divide(hist_sum, num_pxls_present)
-    #     # class weight from ENet paper 
-    #     class_weight = 1 / np.log(1.02 + freq)
-    #     class_weight[-1] = 0
-        
-        # freq = np.nan_to_num(freq)
-        # if 'median' in mode :
-        #     divider = np.nanmedian(freq)
-        # elif mode == 'mean' :
-        #     divider = np.nanmean(freq)
-
-        
-
-    #     np.save('class_weight_cityscapes.npy', class_weight)
             
     
-
     def __len__ (self) : 
 
         return len(self.img_infos)
@@ -213,31 +180,23 @@ class CityscapesDatset:
         label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
         
         
-        
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
-    
         
+        # if np.random.uniform() > 0.7 :
+        #     image = np.fliplr(image)
+        #     label = np.fliplr(label)
 
+        # if np.random.uniform() > 0.4 :
+        #     image = np.flipud(image)
+        #     label = np.flipud(label)        
+        
+        
         data['image'] = image 
         data['segmentation_mask'] = label
         
         return data
         
-def test(): 
+if __name__ == "__main__" : 
     data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
-
-    cityscapes_dataset._get_class_weight(data_dir)
-    
-    
-
-    
-    
-
-        
-    
-    return None 
-
-if __name__ == "__main__" : 
-    test()
