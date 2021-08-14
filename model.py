@@ -16,13 +16,7 @@ Code Reference :
     https://github.com/wutianyiRosun/CGNet
 """
 
-"""
-TODO
 
-1. Add a custom convolutional layer for specific padding size 
-2. Add a custom channelwiseconv for specific padding size 
-4. Add a custom ChannelWiseDilatedConv for specific padding size 
-"""
 __all__ = ["CGNet"]  
 kernel_initializer = he_normal()
 
@@ -194,7 +188,7 @@ class InputInjection(Model):
 
 
 class CGNet(Model):
-    def __init__(self, classes=19, M= 3, N= 21, dropout_flag = False):
+    def __init__(self, num_classes=19, M= 3, N= 21, dropout_flag = False):
         """
 
         """
@@ -234,22 +228,17 @@ class CGNet(Model):
         if self.dropout_flag:
             print("have droput layer")
             self.dropout = tf.keras.Sequential(Dropout(0.4, False))
-            self.classifier = tf.keras.Sequential(Conv2D(classes, 1, use_bias = False))
+            self.classifier = tf.keras.Sequential(Conv2D(num_classes, 1, use_bias = False))
         else:
-            self.classifier = Conv2D(classes,1, use_bias = False)
+            self.classifier = Conv2D(num_classes,1, use_bias = False)
 
         self.upsample = UpSampling2D(size=(8, 8), interpolation = 'bilinear')
-        """
-        TODO 
-        1. add an initialization 
-        """
        
             
     def call(self, input):
 
 
         # Stage 1 
-        print("Training starts with {}".format(input.shape))
         output1 = self.stage1_1(input)
         output1 = self.stage1_2(output1)
         output1 = self.stage1_3(output1)
@@ -259,11 +248,9 @@ class CGNet(Model):
         inp2 =   self.sample2(input)
 
         output1_cat = self.bn1(Concatenate()([output1, inp1]))
-        print("Stage 1 ends with {}".format(output1_cat.shape))
 
         # Stage 2
         output2_1 = self.stage2_1(output1_cat) 
-        print("Stage 2 starts with {}".format(output2_1.shape))
 
         for i, layer in enumerate(self.stage2): 
             if i == 0 : 
@@ -283,7 +270,6 @@ class CGNet(Model):
                 output3 = layer(output3)
 
         output3_cat = self.bn3(Concatenate()([output3, output3_1]))
-        print("Stage 3 ends with {}".format(output3_cat.shape))
         # classifier 
         if self.dropout_flag:
             output3_cat = self.dropout(output3_cat)
@@ -300,11 +286,4 @@ class CGNet(Model):
         input = tf.keras.layers.Input(shape=(680,680,3))
         return Model(inputs=[input], outputs=self.call(input))
 
-model = CGNet()
-model_functional = model.model()
-#model.build((None, 32,32,3))
-model_functional.summary()
 
- lyr_idx = 14
-# idx = 0
-# tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())

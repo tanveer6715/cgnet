@@ -10,15 +10,15 @@ from tqdm import tqdm
 from glob import glob 
 
 
-physical_devices = tf.config.list_physical_devices('GPU')
-try:
-   tf.config.experimental.set_memory_growth(physical_devices[0], True)
-   tf.config.experimental.set_memory_growth(physical_devices[1], True)
-   tf.config.experimental.set_memory_growth(physical_devices[2], True)
-   tf.config.experimental.set_memory_growth(physical_devices[3], True)
-except:
-  # Invalid device or cannot modify virtual devices once initialized.
-  pass
+# physical_devices = tf.config.list_physical_devices('GPU')
+# try:
+#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[1], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[2], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[3], True)
+# except:
+#   # Invalid device or cannot modify virtual devices once initialized.
+#   pass
 
 CLASSES = ('road', 'sidewalk', 'building', 'wall', 
             'fence', 'pole', 'traffic light', 'traffic sign',
@@ -113,8 +113,10 @@ class CityscapesDatset:
 
         """ Read segmentation mask from the annotation directory
         Args:
+            idx (int): Index of data.
                         
         Returns:
+            seg_copy (array) : return of _convert_to_label_id
             
         """
 
@@ -147,9 +149,14 @@ class CityscapesDatset:
 
         Args:
             idx (int): Index of data.
+
         Returns:
             dict: Training/test data (with annotation if `test_mode` is set
                 False).
+
+        Reference : 
+            [1] https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
+
         """
         data = {}
         # data['image'] = self.prepare_img(idx)
@@ -158,11 +165,7 @@ class CityscapesDatset:
         image = self.prepare_img(idx)
         label = self.prepare_seg_mask(idx)
 
- 
-        """
-        Code Reference : 
-        https://github.com/wutianyiRosun/CGNet/blob/master/dataset/cityscapes.py
-        """
+        
         f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
             
         img_h, img_w = label.shape

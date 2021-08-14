@@ -53,8 +53,13 @@ def load_image_test(datapoint, size=(680,680), is_normalize = True):
     Load test images 
 
     Args : 
+        datapoint
+        size 
+        is_normalize 
 
-    Returns 
+    Returns :
+        image
+        label 
 
     """
     image = tf.cast(datapoint['image'], tf.float32)
@@ -74,7 +79,6 @@ def load_image_test(datapoint, size=(680,680), is_normalize = True):
 def batch_generator(Dataset, batch_size, shuffle=True, repeat = 1, ignore_class = 255):
     """    
     TODO 
-        1. add remaining part of batch loop
         2. add test mode 
         3. add a function to handle ignore class 
             Currently, the ignore_class is regared as a background. 
