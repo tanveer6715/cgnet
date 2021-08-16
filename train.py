@@ -1,109 +1,49 @@
+import argparse
+import os 
 
-from re import VERBOSE
 import tensorflow as tf
-from cityscapes import CityscapesDatset
+import numpy as np
+
+from datasets.cityscapes import CityscapesDatset
+from datasets.concrete_damage_as_cityscapes import Concrete_Damage_Dataset_as_Cityscapes
 from model import CGNet
 from pipeline import batch_generator
-import numpy as np
-from tqdm import tqdm 
+from utils import load_config
+from loss import compute_loss
+from optim import load_optimizer
+
+import time
+
+def distributed_train_step(dist_inputs, mirrored_strategy):
+    """
+    """
+    per_replica_losses = mirrored_strategy.run(train_step, args=(dist_inputs,))
+    return mirrored_strategy.reduce("MEAN", per_replica_losses,
+                        axis=None)
 
 
-model = CGNet(classes = 19)
-learning_rate = tf.keras.optimizers.schedules.PolynomialDecay(0.001, 60000, 
-                                                            end_learning_rate=0.0001, power=0.9,
-                                                            cycle=False, name=None)
+@tf.function
+def train_step(inputs):
+    """Train step 
 
-optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1= 0.9, beta_2= 0.999, epsilon= 1e-08)
-loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
-    from_logits = True,
-    reduction=tf.keras.losses.Reduction.NONE
-)
+    Args : 
+        inputs (tuple) : includes images (tf.tensor) and labels (tf.tensor)
+        train_loss (global, tf.keras.metric)
+        train_accuracy (global, tf.keras.metric)
+        train_iou (global, tf.keras.metric)
+        optimizer (gloabl, tf.optimizer)
 
-#class_weight = np.load('class_weight_cityscapes.npy', 'r')
-
-class_weight=[  2.5959933, 6.7415504, 3.5354059, 9.8663225, 9.690899, 9.369352,
-                10.289121, 9.953208, 4.3097677, 9.490387, 7.674431, 9.396905,
-                10.347791, 6.3927646, 10.226669, 10.241062, 10.280587,
-                10.396974, 10.055647   ]
-print(class_weight)
-
-optimizer = tf.keras.optimizers.SGD()
-train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-train_iou = tf.keras.metrics.MeanIoU(num_classes=19, name='train_miou')
-
-## TODO we need to make argument input from command line 
-
-EPOCHS = 325
-
-DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
-
-cityscapes_dataset = CityscapesDatset(DATA_DIR)
-TRAIN_LENGTH = len(cityscapes_dataset)
-print("Length of the dataset : {}".format(TRAIN_LENGTH))
-
-"""
-TODO
-make options for variables 
-
-1. learning rate 
-2. optimizer 
-3. batch size 
-4. checkpoint file name 
-5. load model weights 
-6. pre-training option 
-.... 
-
-"""
-
-#@tf.function
-def compute_loss(lables, predictions): 
-    loss = loss_object(lables, predictions)
-    weight_map = tf.ones_like(loss)
-
-    for idx in range(19):
-        # for indexing not_equal has to be used...
-        class_idx_map = tf.math.not_equal(tf.squeeze(lables), idx)
-        
-        # tf.print(class_idx_map)
-        # tf.print("index : {}".format(idx))
-        # # tf.print(tf.squeeze(lables) == idx)
-        
-        # tf.print("Num pixels in class map")
-        # tf.print(tf.math.reduce_sum(tf.cast(class_idx_map, dtype = tf.float32)))
-        
-        #     tf.print("you are here 2")
-        # tf.print("Weight Value")
-        # tf.print(weight)
-        # tf.print(idx, class_weight[idx])
-        weight_map = tf.where(class_idx_map, weight_map, class_weight[idx])
-        # tf.print("Max value in weight map")
-        # tf.print(tf.math.reduce_max(weight_map))
-        # tf.print(weight_map)
+    Return 
+        loss 
     
-    # tf.print("Max value in weight map")
-    # tf.print(tf.math.reduce_max(weight_map))
+    """
 
-    loss = tf.math.multiply(loss, weight_map)
-
-    loss = tf.reduce_mean(loss)
+    images, labels = inputs
     
-
-    return loss
-
-
-
-
-#@tf.function
-def train_step(images, labels,):
     with tf.GradientTape() as tape:
         predictions = model(images)
-        #loss = loss_object(labels, predictions)
-        loss = compute_loss(labels, predictions)
-    """
-    TODO 
-    print training progress 
-    """
+        loss = compute_loss(labels, predictions, class_weight)
+
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -111,41 +51,178 @@ def train_step(images, labels,):
     train_accuracy(labels, predictions)
 
     argmax_predictions = tf.math.argmax(predictions, 3)
-    
     train_iou.update_state(labels, argmax_predictions)
-    
- 
+
+    return loss
 
 
 
-def train():
+def train_model(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to ):
 
-    # model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_230.h5'
+    """Train model on a single gpu
+    Args : 
+        model (tf.model) 
+        train_dataset (generator)
+        optimizer (tf.optimizer)
+        train_loss (tf.keras.metric)
+        train_accuracy (tf.keras.metric) 
+        train_iou (tf.keras.metric) 
+        batch_size (int or float) 
+        class_weight (list) 
+        epochs (int or float) 
+        num_steps (int or float) 
+        log_template (string) 
+        model_save_to (string)
 
-    # model.build((4, 680, 680, 3))
-    # model.load_weights(model_weight_path)
+    Returns : 
+        None 
+    """
 
-    for epoch in tqdm(range(1,EPOCHS)):
-        cityscapes_generator = batch_generator(cityscapes_dataset, 4)
+    for epoch in range(1, epochs):
 
+        train_dataset_generator = batch_generator(train_dataset, batch_size)
+
+        for step, batch in enumerate(train_dataset_generator):
         
-        "TODO: add progress bar to training loop"
-        for images, labels in cityscapes_generator:
+            train_step(batch)
             
-            train_step(images, labels)
-        
-            template = 'Epoch: {}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
-            print (template.format(epoch+1,
-                                    train_loss.result(),
-                                    train_accuracy.result()*100,
-                                    train_iou.result()*100
-                                    ))
+            if step % 100 == 0 : 
+                print(log_template.format(epoch,
+                                        epochs,
+                                        step+1,
+                                        num_steps,
+                                        train_loss.result(),
+                                        train_accuracy.result()*100,
+                                        train_iou.result()*100
+                                        ))
         if epoch % 5 == 0 :
-            model.save_weights('/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_{}.h5'.format(epoch))
+            model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
 
+
+
+def dist_train(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to ):
+
+    def gen():  
+        """
+        """
+        for images, labels in train_dataset_generator:
+            images = tf.squeeze(images)
+            labels = tf.squeeze(labels, axis = 0)
+            yield images, labels
+
+    mirrored_strategy = tf.distribute.MirroredStrategy()
+    print ('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
+
+    # with mirrored_strategy.scope():
+    #     dist_model = model
+    #     dist_optimizer = optimizer
+
+    #     loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
+    #                 from_logits = True,
+    #                 reduction=tf.keras.losses.Reduction.NONE)
+
+    train_dataset_generator = batch_generator(train_dataset, 1, repeat= epochs)
+
+    tf_train_dataset_generator = tf.data.Dataset.from_generator(gen, (tf.float32,  tf.uint8), 
+                                                    ((680, 680, 3), (680, 680, 1)))
+
+    tf_train_dataset_generator = tf_train_dataset_generator.batch(batch_size)
+    dist_train_dataset = mirrored_strategy.experimental_distribute_dataset(tf_train_dataset_generator)
+
+    train_dataset_iterator = iter(dist_train_dataset)
+
+    for epoch in range(1, epochs + 1):
+   
+        for step in range(1, num_steps+1):
+            distributed_train_step(next(train_dataset_iterator), mirrored_strategy)
+
+            if step % 2 == 0 : 
+                print(log_template.format(epoch,
+                                        epochs,
+                                        step+1,
+                                        num_steps,
+                                        train_loss.result(),
+                                        train_accuracy.result()*100,
+                                        train_iou.result()*100
+                                        ))
+        if epoch % 5 == 0 :
+            model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
 
 
 if __name__ == "__main__" : 
-     train()
+
+    
+    parser = argparse.ArgumentParser("Please Set Training Configuration File")
+    parser.add_argument("--config-path", type=str)
+    args = parser.parse_args()
+
+    config = load_config(args.config_path)
+
+
+    data_dir = config.get('DATA_DIR', None)
+    resume_from = config.get('RESUME_FROM', None)
+    model_save_to = config.get('MODEL_SAVE_TO', None)
+
+    dataset = config.get('DATASET', None)
+    img_width = config.get('IMG_WIDTH', None)
+    img_height = config.get('IMG_HEIGHT', None)
+    num_classes = config.get('NUM_CLASSES', None)
+    ignore_calss = config.get('IGNORE_CLASS', None)
+
+    batch_size = config.get('BATCH_SIZE', None)
+    epochs = config.get('EPOCHS', None)
+    num_gpu = config.get('NUM_GPU', None)
+
+    num_m_blocks = config.get('NUM_M_BLOCKS', None)
+    num_n_blocks = config.get('NUM_N_BLOCKS', None)
+
+    init_learn_rate = config.get('INIT_LEARN_RATE', None)
+    end_learn_rate = config.get('END_LEARN_RATE',  None)
+    power = config.get('POWER', None)
+
+    class_weight = config.get('CLASS_WEIGHT', None)
+
+    log_template = 'Epoch: {}/{}, steps:{}/{}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
+
+
+    model = CGNet(num_classes = num_classes, M= num_m_blocks, N=num_n_blocks)
+
+    train_loss = tf.keras.metrics.Mean(name='train_loss')
+    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+    train_iou = tf.keras.metrics.MeanIoU(num_classes= num_classes, name='train_miou')
+
+
+    if dataset == 'Cityscapes':
+        train_dataset = CityscapesDatset(data_dir)
+
+    elif dataset == 'Concrete_Damage_Cityscapes':
+        train_dataset = Concrete_Damage_Dataset_as_Cityscapes(data_dir)
+
+    num_steps = len(train_dataset)//batch_size
+
+    optimizer = load_optimizer(init_learn_rate, end_learn_rate, power)
+
+    if num_gpu == 1 :
+        train_model(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to )
+
+    elif num_gpu >= 2: 
+        dist_train(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to )
+
+
+
+        
+        
 
 

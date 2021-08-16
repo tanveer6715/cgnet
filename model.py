@@ -2,7 +2,7 @@ from builtins import input
 import tensorflow as tf 
 
 from tensorflow.keras.layers import Dense, Conv2D, UpSampling2D
-from tensorflow.keras import Model,Sequential
+from tensorflow.keras import Model
 from tensorflow.keras.initializers import he_normal
 from tensorflow.keras.layers.experimental import SyncBatchNormalization
 from tensorflow.keras.layers import PReLU
@@ -11,20 +11,16 @@ from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import ZeroPadding2D
+
 """
 Code Reference : 
     https://github.com/wutianyiRosun/CGNet
 """
 
-"""
-TODO
 
-1. Add a custom convolutional layer for specific padding size 
-2. Add a custom channelwiseconv for specific padding size 
-4. Add a custom ChannelWiseDilatedConv for specific padding size 
-"""
 __all__ = ["CGNet"]  
 kernel_initializer = he_normal()
+
 
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=kernel_initializer):
@@ -45,18 +41,21 @@ class ConvBNPReLU(Model):
                             use_bias=False)
         self.bn = SyncBatchNormalization(epsilon=1e-03)
         self.PReLU = PReLU(shared_axes=[1,2])
-
+    
+    @tf.function
     def call(self, input):
         """
         args:
            input: input feature map
            return: transformed feature map
         """
+
         if self.padding == 'valid' and self.kSize != 1:
             input = self.pad(input)
         output = self.conv(input)
         output = self.bn(output)
         output = self.PReLU(output)
+
         return output
 
 
@@ -70,6 +69,7 @@ class BNPReLU(Model):
         self.bn = SyncBatchNormalization(epsilon=epsilon)
         self.PReLU = PReLU(shared_axes=[1,2])
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -93,7 +93,7 @@ class FGlo(Model):
         self.FC1 = Dense(nOut // reduction, activation= 'relu')
         self.FC2 = Dense(nOut, activation= 'sigmoid') # sigmoid
     
-
+    @tf.function
     def call(self, input):
         output = self.glob_avg_pool(input)
         output = self.FC1(output)
@@ -121,6 +121,7 @@ class CGblock_down(Model):
         self.reduce = Conv2D(nOut, 1, 1, use_bias = False)
         self.FGLo = FGlo(nOut,reduction=reduction) #fglo
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -156,6 +157,7 @@ class CGblock(Model):
         self.add = add
         self.FGLo = FGlo(nOut,reduction=reduction)#fglo
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -186,6 +188,8 @@ class InputInjection(Model):
         for i in range(0, downsamplingRatio):
             self.pool.append(ZeroPadding2D(1))
             self.pool.append(AveragePooling2D(3, strides=2))
+    
+    @tf.function
     def call(self, input):
         for pool in self.pool:
             input = pool(input)
@@ -194,7 +198,7 @@ class InputInjection(Model):
 
 
 class CGNet(Model):
-    def __init__(self, classes=19, M= 3, N= 21, dropout_flag = False):
+    def __init__(self, num_classes=19, M= 3, N= 21, dropout_flag = False):
         """
 
         """
@@ -234,36 +238,27 @@ class CGNet(Model):
         if self.dropout_flag:
             print("have droput layer")
             self.dropout = tf.keras.Sequential(Dropout(0.4, False))
-            self.classifier = tf.keras.Sequential(Conv2D(classes, 1, use_bias = False))
+            self.classifier = tf.keras.Sequential(Conv2D(num_classes, 1, use_bias = False))
         else:
-            self.classifier = Conv2D(classes,1, use_bias = False)
+            self.classifier = Conv2D(num_classes,1, use_bias = False)
 
         self.upsample = UpSampling2D(size=(8, 8), interpolation = 'bilinear')
-        """
-        TODO 
-        1. add an initialization 
-        """
        
-            
+    @tf.function
     def call(self, input):
 
-
         # Stage 1 
-        print("Training starts with {}".format(input.shape))
         output1 = self.stage1_1(input)
         output1 = self.stage1_2(output1)
         output1 = self.stage1_3(output1)
         
-
         inp1 =   self.sample1(input)
         inp2 =   self.sample2(input)
 
         output1_cat = self.bn1(Concatenate()([output1, inp1]))
-        print("Stage 1 ends with {}".format(output1_cat.shape))
 
         # Stage 2
         output2_1 = self.stage2_1(output1_cat) 
-        print("Stage 2 starts with {}".format(output2_1.shape))
 
         for i, layer in enumerate(self.stage2): 
             if i == 0 : 
@@ -283,7 +278,6 @@ class CGNet(Model):
                 output3 = layer(output3)
 
         output3_cat = self.bn3(Concatenate()([output3, output3_1]))
-        print("Stage 3 ends with {}".format(output3_cat.shape))
         # classifier 
         if self.dropout_flag:
             output3_cat = self.dropout(output3_cat)
@@ -300,11 +294,4 @@ class CGNet(Model):
         input = tf.keras.layers.Input(shape=(680,680,3))
         return Model(inputs=[input], outputs=self.call(input))
 
-model = CGNet()
-model_functional = model.model()
-#model.build((None, 32,32,3))
-model_functional.summary()
 
- lyr_idx = 14
-# idx = 0
-# tf.print(model.layers[lyr_idx].layers[idx]) # , model.layers[lyr_idx].layers[idx].count_params())
