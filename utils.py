@@ -1,6 +1,9 @@
 import yaml
 import os 
 
+from functools import wraps
+from time import process_time
+
 def load_config(config_path):
     
     """Load configuration file in YAML format 
@@ -15,3 +18,4 @@ def load_config(config_path):
         config = yaml.safe_load(file)
 
     return config
+

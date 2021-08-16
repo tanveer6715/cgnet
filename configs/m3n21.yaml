@@ -15,7 +15,7 @@ IGNORE_CLASS : 255
 BATCH_SIZE : 4 # If distributed training enabled, BATCH_SIZE used for global batch size
 EPOCHS : 325
 
-NUM_GPU : 1 # NUM_GPU more than 1 uses distributed training
+NUM_GPU : 4 # NUM_GPU more than 1 uses distributed training
 
 #MODEL 
 NUM_M_BLOCKS : 3

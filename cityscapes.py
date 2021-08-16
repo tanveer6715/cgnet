@@ -6,8 +6,9 @@ import tensorflow as tf
 import os.path as osp 
 import numpy as np 
 import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
-from tqdm import tqdm
+
 from glob import glob 
+
 
 
 # physical_devices = tf.config.list_physical_devices('GPU')
@@ -142,7 +143,6 @@ class CityscapesDatset:
 
         return len(self.img_infos)
 
-    
     def __getitem__(self, idx):
         
         """Get training/test data after pipeline.
@@ -185,14 +185,6 @@ class CityscapesDatset:
         
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
-        
-        # if np.random.uniform() > 0.7 :
-        #     image = np.fliplr(image)
-        #     label = np.fliplr(label)
-
-        # if np.random.uniform() > 0.4 :
-        #     image = np.flipud(image)
-        #     label = np.flipud(label)        
         
         
         data['image'] = image 

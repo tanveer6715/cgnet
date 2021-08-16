@@ -11,37 +11,157 @@ from utils import load_config
 from loss import compute_loss
 from optim import load_optimizer
 
-# @tf.function
-# def train_step(model, images, labels, optimizer, class_weight, train_loss, train_accuracy, train_iou) :
-#     """ Training Step
+import time
 
-#     Args : 
-#         model (tf.model)
-#         images (tf.Tensor)
-#         lables (tf.Tensor)
-#         optimizer (tf.optimizer)
-#         train_loss (tf.loss)
+def distributed_train_step(dist_inputs, mirrored_strategy):
+    """
+    """
+    per_replica_losses = mirrored_strategy.run(train_step, args=(dist_inputs,))
+    return mirrored_strategy.reduce("MEAN", per_replica_losses,
+                        axis=None)
+
+
+@tf.function
+def train_step(inputs):
+    """Train step 
+
+    Args : 
+        inputs (tuple) : includes images (tf.tensor) and labels (tf.tensor)
+        train_loss (global, tf.keras.metric)
+        train_accuracy (global, tf.keras.metric)
+        train_iou (global, tf.keras.metric)
+        optimizer (gloabl, tf.optimizer)
+
+    Return 
+        loss 
+    
+    """
+
+    images, labels = inputs
+    
+    with tf.GradientTape() as tape:
+        predictions = model(images)
+        loss = compute_loss(labels, predictions, class_weight)
+
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+    train_loss(loss)
+    train_accuracy(labels, predictions)
+
+    argmax_predictions = tf.math.argmax(predictions, 3)
+    train_iou.update_state(labels, argmax_predictions)
+
+    return loss
+
+
+
+def train_model(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to ):
+
+    """Train model on a single gpu
+    Args : 
+        model (tf.model) 
+        train_dataset (generator)
+        optimizer (tf.optimizer)
+        train_loss (tf.keras.metric)
+        train_accuracy (tf.keras.metric) 
+        train_iou (tf.keras.metric) 
+        batch_size (int or float) 
+        class_weight (list) 
+        epochs (int or float) 
+        num_steps (int or float) 
+        log_template (string) 
+        model_save_to (string)
+
+    Returns : 
+        None 
+    """
+
+    for epoch in range(1, epochs):
+
+        train_dataset_generator = batch_generator(train_dataset, batch_size)
+
+        for step, batch in enumerate(train_dataset_generator):
         
+            train_step(batch)
+            
+            if step % 100 == 0 : 
+                print(log_template.format(epoch,
+                                        epochs,
+                                        step+1,
+                                        num_steps,
+                                        train_loss.result(),
+                                        train_accuracy.result()*100,
+                                        train_iou.result()*100
+                                        ))
+        if epoch % 5 == 0 :
+            model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
+
+
+
+def dist_train(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to ):
+
+    def gen():  
+        """
+        """
+        for images, labels in train_dataset_generator:
+            images = tf.squeeze(images)
+            labels = tf.squeeze(labels, axis = 0)
+            yield images, labels
+
+    mirrored_strategy = tf.distribute.MirroredStrategy()
+    print ('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
+
+    # with mirrored_strategy.scope():
+    #     dist_model = model
+    #     dist_optimizer = optimizer
+
+    #     loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
+    #                 from_logits = True,
+    #                 reduction=tf.keras.losses.Reduction.NONE)
+
+    train_dataset_generator = batch_generator(train_dataset, 1, repeat= epochs)
+
+    tf_train_dataset_generator = tf.data.Dataset.from_generator(gen, (tf.float32,  tf.uint8), 
+                                                    ((680, 680, 3), (680, 680, 1)))
+
+    tf_train_dataset_generator = tf_train_dataset_generator.batch(batch_size)
+    dist_train_dataset = mirrored_strategy.experimental_distribute_dataset(tf_train_dataset_generator)
+
+    train_dataset_iterator = iter(dist_train_dataset)
+
+    for epoch in range(1, epochs + 1):
+   
+        for step in range(1, num_steps+1):
+            distributed_train_step(next(train_dataset_iterator), mirrored_strategy)
+
+            if step % 2 == 0 : 
+                print(log_template.format(epoch,
+                                        epochs,
+                                        step+1,
+                                        num_steps,
+                                        train_loss.result(),
+                                        train_accuracy.result()*100,
+                                        train_iou.result()*100
+                                        ))
+        if epoch % 5 == 0 :
+            model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
+
+
+if __name__ == "__main__" : 
+
     
-#     """
-#     with tf.GradientTape() as tape:
-#         predictions = model(images)
-#         loss = compute_loss(labels, predictions, class_weight)
-    
-#     gradients = tape.gradient(loss, model.trainable_variables)
-#     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    parser = argparse.ArgumentParser("Please Set Training Configuration File")
+    parser.add_argument("--config-path", type=str)
+    args = parser.parse_args()
 
-#     train_loss(loss)
-#     train_accuracy(labels, predictions)
-
-#     argmax_predictions = tf.math.argmax(predictions, 3)
-    
-#     train_iou.update_state(labels, argmax_predictions)
-
-
-def train(config_path):
-
-    config = load_config(config_path)
+    config = load_config(args.config_path)
 
 
     data_dir = config.get('DATA_DIR', None)
@@ -67,7 +187,8 @@ def train(config_path):
 
     class_weight = config.get('CLASS_WEIGHT', None)
 
-    
+    log_template = 'Epoch: {}/{}, steps:{}/{}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
+
 
     model = CGNet(num_classes = num_classes, M= num_m_blocks, N=num_n_blocks)
 
@@ -83,49 +204,21 @@ def train(config_path):
 
     optimizer = load_optimizer(init_learn_rate, end_learn_rate, power)
 
+    if num_gpu == 1 :
+        train_model(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to )
 
-    for epoch in range(1, epochs):
+    elif num_gpu >= 2: 
+        dist_train(model, train_dataset, optimizer,
+                train_loss, train_accuracy, train_iou,
+                batch_size, class_weight, epochs, 
+                num_steps, log_template, model_save_to )
 
-        train_dataset_generator = batch_generator(train_dataset, batch_size)
 
-        for step, batch in enumerate(train_dataset_generator):
-            
-            # train_step(model, images, labels, optimizer, class_weight, train_loss, train_accuracy, train_iou)
-            images, labels =  batch
-            with tf.GradientTape() as tape:
-                predictions = model(images)
-                loss = compute_loss(labels, predictions, class_weight)
-            
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-            train_loss(loss)
-            train_accuracy(labels, predictions)
-
-            argmax_predictions = tf.math.argmax(predictions, 3)
-            
-            train_iou.update_state(labels, argmax_predictions)
         
-            template = 'Epoch: {}/{}, steps:{}/{}, Loss: {:2f}, Accuracy: {:2f}, MeanIoU: {:2f}'
-            print (template.format(epoch,
-                                    epochs,
-                                    step,
-                                    num_steps,
-                                    train_loss.result(),
-                                    train_accuracy.result()*100,
-                                    train_iou.result()*100
-                                    ))
-        if epoch % 5 == 0 :
-            model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
-
-
-if __name__ == "__main__" : 
-
-    
-    parser = argparse.ArgumentParser("Please Set Training Configuration File")
-    parser.add_argument("--config", type=str)
-    args = parser.parse_args()
-    
-    train(args.config)
+        
 
 
