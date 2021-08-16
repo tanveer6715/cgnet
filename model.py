@@ -2,7 +2,7 @@ from builtins import input
 import tensorflow as tf 
 
 from tensorflow.keras.layers import Dense, Conv2D, UpSampling2D
-from tensorflow.keras import Model,Sequential
+from tensorflow.keras import Model
 from tensorflow.keras.initializers import he_normal
 from tensorflow.keras.layers.experimental import SyncBatchNormalization
 from tensorflow.keras.layers import PReLU
@@ -11,6 +11,7 @@ from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import ZeroPadding2D
+
 """
 Code Reference : 
     https://github.com/wutianyiRosun/CGNet
@@ -19,6 +20,7 @@ Code Reference :
 
 __all__ = ["CGNet"]  
 kernel_initializer = he_normal()
+
 
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=kernel_initializer):
@@ -39,18 +41,21 @@ class ConvBNPReLU(Model):
                             use_bias=False)
         self.bn = SyncBatchNormalization(epsilon=1e-03)
         self.PReLU = PReLU(shared_axes=[1,2])
-
+    
+    @tf.function
     def call(self, input):
         """
         args:
            input: input feature map
            return: transformed feature map
         """
+
         if self.padding == 'valid' and self.kSize != 1:
             input = self.pad(input)
         output = self.conv(input)
         output = self.bn(output)
         output = self.PReLU(output)
+
         return output
 
 
@@ -64,6 +69,7 @@ class BNPReLU(Model):
         self.bn = SyncBatchNormalization(epsilon=epsilon)
         self.PReLU = PReLU(shared_axes=[1,2])
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -87,7 +93,7 @@ class FGlo(Model):
         self.FC1 = Dense(nOut // reduction, activation= 'relu')
         self.FC2 = Dense(nOut, activation= 'sigmoid') # sigmoid
     
-
+    @tf.function
     def call(self, input):
         output = self.glob_avg_pool(input)
         output = self.FC1(output)
@@ -115,6 +121,7 @@ class CGblock_down(Model):
         self.reduce = Conv2D(nOut, 1, 1, use_bias = False)
         self.FGLo = FGlo(nOut,reduction=reduction) #fglo
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -150,6 +157,7 @@ class CGblock(Model):
         self.add = add
         self.FGLo = FGlo(nOut,reduction=reduction)#fglo
 
+    @tf.function
     def call(self, input):
         """
         args:
@@ -180,6 +188,8 @@ class InputInjection(Model):
         for i in range(0, downsamplingRatio):
             self.pool.append(ZeroPadding2D(1))
             self.pool.append(AveragePooling2D(3, strides=2))
+    
+    @tf.function
     def call(self, input):
         for pool in self.pool:
             input = pool(input)
@@ -234,16 +244,14 @@ class CGNet(Model):
 
         self.upsample = UpSampling2D(size=(8, 8), interpolation = 'bilinear')
        
-            
+    @tf.function
     def call(self, input):
-
 
         # Stage 1 
         output1 = self.stage1_1(input)
         output1 = self.stage1_2(output1)
         output1 = self.stage1_3(output1)
         
-
         inp1 =   self.sample1(input)
         inp2 =   self.sample2(input)
 
