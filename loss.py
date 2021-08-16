@@ -23,7 +23,7 @@ def compute_loss(lables, predictions, class_weight):
     loss = loss_object(lables, predictions)
     weight_map = tf.ones_like(loss)
 
-    for idx in range(19):
+    for idx in range(len(weight_map)):
         # for indexing not_equal has to be used...
         class_idx_map = tf.math.not_equal(tf.squeeze(lables), idx)
         

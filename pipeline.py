@@ -1,7 +1,7 @@
 
 from random import shuffle
 import tensorflow as tf 
-from cityscapes import CityscapesDatset
+from datasets.cityscapes import CityscapesDatset
 import numpy as np
 
 def normalize(image, label):

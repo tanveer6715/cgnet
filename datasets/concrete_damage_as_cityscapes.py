@@ -9,8 +9,6 @@ import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
 
 from glob import glob 
 
-
-
 # physical_devices = tf.config.list_physical_devices('GPU')
 # try:
 #    tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -21,21 +19,13 @@ from glob import glob
 #   # Invalid device or cannot modify virtual devices once initialized.
 #   pass
 
-CLASSES = ('road', 'sidewalk', 'building', 'wall', 
-            'fence', 'pole', 'traffic light', 'traffic sign',
-            'vegetation', 'terrain', 'sky', 'person', 
-            'rider', 'car', 'truck', 'bus', 
-            'train', 'motorcycle', 'bicycle')
+CLASSES = ('background', 'crack', 'efflorescence', 'rebar_exposure', 'spalling',)
 
-PALETTE = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156],
-            [190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0],
-            [107, 142, 35], [152, 251, 152], [70, 130, 180], [220, 20, 60],
-            [255, 0, 0], [0, 0, 142], [0, 0, 70], [0, 60, 100],
-            [0, 80, 100], [0, 0, 230], [119, 11, 32]]
+PALETTE = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 255], [255, 0, 255],]
 
 
 
-class CityscapesDatset: 
+class Concrete_Damage_Dataset_as_Cityscapes: 
     
     """
     Cityscapes dataset.
@@ -52,8 +42,8 @@ class CityscapesDatset:
         self.classes = CLASSES
         self.palette = PALETTE
         self.data_dir = data_dir
-        self.img_dir = osp.join(data_dir, 'leftImg8bit_trainvaltest/leftImg8bit', data_type)
-        self.ann_dir = osp.join(data_dir, 'gtFine_trainvaltest/gtFine', data_type)
+        self.img_dir = osp.join(data_dir, 'leftImg8bit', data_type)
+        self.ann_dir = osp.join(data_dir, 'gtFine', data_type)
         self.img_suffix = '_leftImg8bit.png'
         self.seg_map_suffix = '_gtFine_labelIds.png'
         # load annotations
@@ -89,7 +79,7 @@ class CityscapesDatset:
             seg_map = img.replace(self.img_suffix, self.seg_map_suffix)
             img_info['ann'] = dict(seg_map=seg_map)
             img_infos.append(img_info)
-
+        print(img_infos)
         return img_infos
 
     def prepare_img(self, idx): 
@@ -100,11 +90,11 @@ class CityscapesDatset:
         Returns:
             
         """
-
+        
         img_filename = self.img_infos[idx]['filename']
         img_prefix = img_filename.split('_')[0]
 
-        img_path = osp.join(self.img_dir, img_prefix, img_filename)
+        img_path = osp.join(self.img_dir, img_filename)
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -124,19 +114,19 @@ class CityscapesDatset:
         seg_filename = self.img_infos[idx]['ann']['seg_map']
         seg_prefix = seg_filename.split('_')[0]
 
-        seg_path = osp.join(self.ann_dir, seg_prefix, seg_filename)
+        seg_path = osp.join(self.ann_dir, seg_filename)
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
 
-        return CityscapesDatset._convert_to_label_id(seg)
+        return seg
 
-    @staticmethod
-    def _convert_to_label_id(seg):
-        """Convert trainId to id for cityscapes."""
-        seg_copy = seg.copy()
-        for label in CSLabels.labels:
-            # print(label.name)
-            seg_copy[seg == label.id] = label.trainId
-        return seg_copy
+    # @staticmethod
+    # def _convert_to_label_id(seg):
+    #     """Convert trainId to id for cityscapes."""
+    #     seg_copy = seg.copy()
+    #     for label in CSLabels.labels:
+    #         # print(label.name)
+    #         seg_copy[seg == label.id] = label.trainId
+    #     return seg_copy
             
     
     def __len__ (self) : 
@@ -192,6 +182,3 @@ class CityscapesDatset:
         
         return data
         
-if __name__ == "__main__" : 
-    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
-    cityscapes_dataset = CityscapesDatset(data_dir)

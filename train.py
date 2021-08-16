@@ -4,7 +4,8 @@ import os
 import tensorflow as tf
 import numpy as np
 
-from cityscapes import CityscapesDatset
+from datasets.cityscapes import CityscapesDatset
+from datasets.concrete_damage_as_cityscapes import Concrete_Damage_Dataset_as_Cityscapes
 from model import CGNet
 from pipeline import batch_generator
 from utils import load_config
@@ -199,6 +200,9 @@ if __name__ == "__main__" :
 
     if dataset == 'Cityscapes':
         train_dataset = CityscapesDatset(data_dir)
+
+    elif dataset == 'Concrete_Damage_Cityscapes':
+        train_dataset = Concrete_Damage_Dataset_as_Cityscapes(data_dir)
 
     num_steps = len(train_dataset)//batch_size
 
