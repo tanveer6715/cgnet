@@ -2,9 +2,9 @@
 # Refer to https://pyyaml.org/wiki/PyYAMLDocumentation#:~:text=YAML%20tags%20and%20Python%20types
 
 
-DATA_DIR : '/home/user/UOS-SSaS Dropbox/05. Data/02. Training&Test/concrete_damage_autocon/as_cityscape'
+DATA_DIR : '/home/soojin/UOS-SSaS Dropbox/05. Data/02. Training&Test/concrete_damage_autocon/as_cityscape'
 RESUME_FROM : null
-MODEL_SAVE_TO : '/home/user/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.16 concrete_damage_test'
+MODEL_SAVE_TO : '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.16 concrete_damage_test'
 
 DATASET : 'Concrete_Damage_Cityscapes'
 IMG_WIDTH : 680
