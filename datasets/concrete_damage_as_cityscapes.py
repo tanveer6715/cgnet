@@ -9,19 +9,20 @@ import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
 
 from glob import glob 
 
-# physical_devices = tf.config.list_physical_devices('GPU')
-# try:
-#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[1], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[2], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[3], True)
-# except:
-#   # Invalid device or cannot modify virtual devices once initialized.
-#   pass
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+   tf.config.experimental.set_memory_growth(physical_devices[0], True)
+   tf.config.experimental.set_memory_growth(physical_devices[1], True)
+   tf.config.experimental.set_memory_growth(physical_devices[2], True)
+   tf.config.experimental.set_memory_growth(physical_devices[3], True)
+except:
+  # Invalid device or cannot modify virtual devices once initialized.
+  pass
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+CLASSES = ('background', 'crack', 'efflorescence', 'rebar_exposure', 'spalling')
 
-CLASSES = ('background', 'crack', 'efflorescence', 'rebar_exposure', 'spalling',)
-
-PALETTE = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 255], [255, 0, 255],]
+PALETTE = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 255], [255, 0, 255]]
 
 
 
@@ -79,7 +80,7 @@ class Concrete_Damage_Dataset_as_Cityscapes:
             seg_map = img.replace(self.img_suffix, self.seg_map_suffix)
             img_info['ann'] = dict(seg_map=seg_map)
             img_infos.append(img_info)
-        print(img_infos)
+        #print(img_infos)
         return img_infos
 
     def prepare_img(self, idx): 

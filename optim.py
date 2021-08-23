@@ -1,6 +1,5 @@
 import tensorflow as tf 
 
-
 def load_optimizer(init_learn_rate, end_learn_rate, power): 
     """ Set optimizer for training 
 
@@ -19,6 +18,6 @@ def load_optimizer(init_learn_rate, end_learn_rate, power):
                                                                 cycle=False, name=None)
 
 
-    optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1= 0.9, beta_2= 0.999, epsilon= 1e-08)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1= 0.9, beta_2= 0.999, epsilon= 1e-08)
 
     return optimizer 

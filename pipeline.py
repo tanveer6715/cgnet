@@ -15,7 +15,7 @@ def normalize(image, label):
     
     return image, label
 
-@tf.function
+#@tf.function
 def load_image_train(datapoint, size=(680,680)):
 
     """
@@ -46,7 +46,7 @@ def load_image_train(datapoint, size=(680,680)):
 
     return image, label
 
-
+#@tf.function
 def load_image_test(datapoint, size=(680,680), is_normalize = True):
 
     """

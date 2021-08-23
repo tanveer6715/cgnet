@@ -11,8 +11,9 @@ from pipeline import batch_generator
 from utils import load_config
 from loss import compute_loss
 from optim import load_optimizer
-
 import time
+
+
 
 def distributed_train_step(dist_inputs, mirrored_strategy):
     """
@@ -56,7 +57,6 @@ def train_step(inputs):
     return loss
 
 
-
 def train_model(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
@@ -98,15 +98,16 @@ def train_model(model, train_dataset, optimizer,
                                         train_accuracy.result()*100,
                                         train_iou.result()*100
                                         ))
+        #tf.saved_model.save(my_model,os.path.join(model_save_to))
+            model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
         if epoch % 5 == 0 :
             model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
-
 
 
 def dist_train(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
-                num_steps, log_template, model_save_to ):
+                num_steps, log_template, model_save_to):
 
     def gen():  
         """
@@ -119,7 +120,7 @@ def dist_train(model, train_dataset, optimizer,
     mirrored_strategy = tf.distribute.MirroredStrategy()
     print ('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
 
-    # with mirrored_strategy.scope():
+   #with mirrored_strategy.scope():
     #     dist_model = model
     #     dist_optimizer = optimizer
 
@@ -127,21 +128,28 @@ def dist_train(model, train_dataset, optimizer,
     #                 from_logits = True,
     #                 reduction=tf.keras.losses.Reduction.NONE)
 
+
+        # model_save_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.20 concrete/'
+        # model.build((4,680,680,3))
+        # keras.models.load_model(model_save_path)
     train_dataset_generator = batch_generator(train_dataset, 1, repeat= epochs)
 
     tf_train_dataset_generator = tf.data.Dataset.from_generator(gen, (tf.float32,  tf.uint8), 
                                                     ((680, 680, 3), (680, 680, 1)))
 
     tf_train_dataset_generator = tf_train_dataset_generator.batch(batch_size)
+    # options = tf.data.Options()
+    # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+    # tf_train_dataset_generator = tf_train_dataset_generator.with_options(options)
     dist_train_dataset = mirrored_strategy.experimental_distribute_dataset(tf_train_dataset_generator)
 
     train_dataset_iterator = iter(dist_train_dataset)
 
     for epoch in range(1, epochs + 1):
-   
+        
         for step in range(1, num_steps+1):
             distributed_train_step(next(train_dataset_iterator), mirrored_strategy)
-
+        
             if step % 2 == 0 : 
                 print(log_template.format(epoch,
                                         epochs,
@@ -151,10 +159,12 @@ def dist_train(model, train_dataset, optimizer,
                                         train_accuracy.result()*100,
                                         train_iou.result()*100
                                         ))
+        #tf.saved_model.save(my_model,os.path.join(model_save_to))
+        #model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
         if epoch % 5 == 0 :
             model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
-
-
+        if epoch % 325 == 0 :
+            model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
 if __name__ == "__main__" : 
 
     
@@ -212,17 +222,10 @@ if __name__ == "__main__" :
         train_model(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
-                num_steps, log_template, model_save_to )
+                num_steps, log_template, model_save_to,resume_from)
 
     elif num_gpu >= 2: 
         dist_train(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
-                num_steps, log_template, model_save_to )
-
-
-
-        
-        
-
-
+                num_steps, log_template, model_save_to)

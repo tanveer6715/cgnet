@@ -6,7 +6,7 @@ from tensorflow.keras import Model
 from tensorflow.keras.initializers import he_normal
 from tensorflow.keras.layers.experimental import SyncBatchNormalization
 from tensorflow.keras.layers import PReLU
-from tensorflow.keras.layers import Concatenate
+from tensorflow.keras.layers import concatenate
 from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import Dropout
@@ -20,7 +20,6 @@ Code Reference :
 
 __all__ = ["CGNet"]  
 kernel_initializer = he_normal()
-
 
 class ConvBNPReLU(Model):
     def __init__(self, nOut, kSize, strides=1, padding='same', kernel_initializer=kernel_initializer):
@@ -116,7 +115,7 @@ class CGblock_down(Model):
         self.F_sur = Conv2D(nOut,kSize, strides=(strides, strides), padding=padding, 
                                     dilation_rate=dilation_rate, kernel_initializer=kernel_initializer, groups = nOut,
                                     use_bias = False) #fsur
-        self.Concatenate = Concatenate() #fjoi
+        #self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(2*nOut)
         self.reduce = Conv2D(nOut, 1, 1, use_bias = False)
         self.FGLo = FGlo(nOut,reduction=reduction) #fglo
@@ -132,7 +131,7 @@ class CGblock_down(Model):
 
         loc = self.F_loc(output)
         sur = self.F_sur(output)
-        output = Concatenate()([loc,sur])
+        output = concatenate([loc,sur])
         output = self.BNPReLU(output)
         output = self.reduce(output)
         output = self.FGLo(output)
@@ -152,7 +151,7 @@ class CGblock(Model):
         self.F_sur = Conv2D(n, 3, strides=(strides, strides), padding=padding, 
                                     dilation_rate=dilation_rate,kernel_initializer=kernel_initializer, groups=n,
                                     use_bias = False) #fsur
-        self.Concatenate = Concatenate() #fjoi
+        #self.Concatenate = Concatenate() #fjoi
         self.BNPReLU = BNPReLU(epsilon=epsilon)
         self.add = add
         self.FGLo = FGlo(nOut,reduction=reduction)#fglo
@@ -168,7 +167,7 @@ class CGblock(Model):
 
         loc = self.F_loc(output)
         sur = self.F_sur(output)
-        output = Concatenate()([loc,sur])
+        output = concatenate([loc,sur])
         output = self.BNPReLU(output)
         output = self.FGLo(output)
         if self.add:
@@ -255,7 +254,7 @@ class CGNet(Model):
         inp1 =   self.sample1(input)
         inp2 =   self.sample2(input)
 
-        output1_cat = self.bn1(Concatenate()([output1, inp1]))
+        output1_cat = self.bn1(concatenate([output1, inp1]))
 
         # Stage 2
         output2_1 = self.stage2_1(output1_cat) 
@@ -266,7 +265,7 @@ class CGNet(Model):
             else : 
                 output2 = layer(output2)
 
-        output2_cat = self.bn2(Concatenate()([output2, output2_1, inp2]))
+        output2_cat = self.bn2(concatenate([output2, output2_1, inp2]))
         
         # Stage 3 
         output3_1 = self.stage3_1(output2_cat)
@@ -277,7 +276,7 @@ class CGNet(Model):
             else : 
                 output3 = layer(output3)
 
-        output3_cat = self.bn3(Concatenate()([output3, output3_1]))
+        output3_cat = self.bn3(concatenate([output3, output3_1]))
         # classifier 
         if self.dropout_flag:
             output3_cat = self.dropout(output3_cat)
@@ -293,5 +292,3 @@ class CGNet(Model):
     def model(self):
         input = tf.keras.layers.Input(shape=(680,680,3))
         return Model(inputs=[input], outputs=self.call(input))
-
-

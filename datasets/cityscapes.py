@@ -11,16 +11,18 @@ from glob import glob
 
 
 
-# physical_devices = tf.config.list_physical_devices('GPU')
-# try:
-#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[1], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[2], True)
-#    tf.config.experimental.set_memory_growth(physical_devices[3], True)
-# except:
-#   # Invalid device or cannot modify virtual devices once initialized.
-#   pass
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+   tf.config.experimental.set_memory_growth(physical_devices[0], True)
+   tf.config.experimental.set_memory_growth(physical_devices[1], True)
+   tf.config.experimental.set_memory_growth(physical_devices[2], True)
+   tf.config.experimental.set_memory_growth(physical_devices[3], True)
+except:
+  # Invalid device or cannot modify virtual devices once initialized.
+  pass
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 CLASSES = ('road', 'sidewalk', 'building', 'wall', 
             'fence', 'pole', 'traffic light', 'traffic sign',
             'vegetation', 'terrain', 'sky', 'person', 
@@ -46,7 +48,7 @@ class CityscapesDatset:
         [1] https://github.com/open-mmlab/mmsegmentation
     """
 
-
+    
     def __init__(self, data_dir, data_type = 'train'):
 
         self.classes = CLASSES

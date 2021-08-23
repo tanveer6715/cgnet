@@ -7,7 +7,7 @@ loss_object =tf.keras.losses.SparseCategoricalCrossentropy(
 
 
 
-#@tf.function
+@tf.function
 def compute_loss(lables, predictions, class_weight): 
     """Compute loss 
 

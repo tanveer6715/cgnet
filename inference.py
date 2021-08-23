@@ -1,7 +1,7 @@
 import tensorflow as tf 
 import numpy as np
 
-from cityscapes import CityscapesDatset
+from datasets.concrete_damage_as_cityscapes import Concrete_Damage_Dataset_as_Cityscapes
 from model import CGNet
 from pipeline import batch_generator
 from tqdm import tqdm 
@@ -11,26 +11,25 @@ from numpy import matlib
 import cv2
 
 
-model = CGNet(classes=19)
+model = CGNet(num_classes=5)
 
 
 ## TODO we need to make argument input from command line 
 
-DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/02. Training&Test/concrete_damage_autocon/as_cityscape'
 
 tf.executing_eagerly()
 
 # choose 'val' for validation or 'test' for test 
-cityscapes_dataset = CityscapesDatset(DATA_DIR, data_type = 'train')
+cityscapes_dataset = Concrete_Damage_Dataset_as_Cityscapes(DATA_DIR, data_type = 'val')
 TEST_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TEST_LENGTH))
-model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.07.28 single_train/epoch_240.h5'
+model_weight_path =  '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.17 concrete_damage_test/epoch_325.h5'
 
 model.build((1, 680, 680, 3))
 model.load_weights(model_weight_path)
 
-img_idx = 115
-
+img_idx = 264
 image, label = load_image_test(cityscapes_dataset[img_idx])
 
 img = tf.stack([image])
@@ -48,7 +47,7 @@ np_predictions = np.squeeze(np_predictions)
 prediction_map = np.zeros_like(image)
 ground_truth = np.zeros_like(image)
 
-for idx in range(19):
+for idx in range(5):
     prediction_map[np_predictions == idx] = cityscapes_dataset.palette[idx]
     label_map = label == idx
     label_map = np.squeeze(label_map)
