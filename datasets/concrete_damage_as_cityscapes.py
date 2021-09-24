@@ -5,21 +5,21 @@ import random
 import tensorflow as tf
 import os.path as osp 
 import numpy as np 
-import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
+#import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
 
 from glob import glob 
 
-physical_devices = tf.config.list_physical_devices('GPU')
-try:
-   tf.config.experimental.set_memory_growth(physical_devices[0], True)
-   tf.config.experimental.set_memory_growth(physical_devices[1], True)
-   tf.config.experimental.set_memory_growth(physical_devices[2], True)
-   tf.config.experimental.set_memory_growth(physical_devices[3], True)
-except:
-  # Invalid device or cannot modify virtual devices once initialized.
-  pass
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+# physical_devices = tf.config.list_physical_devices('GPU')
+# try:
+#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[1], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[2], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[3], True)
+# except:
+#   # Invalid device or cannot modify virtual devices once initialized.
+#   pass
+# import os
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 CLASSES = ('background', 'crack', 'efflorescence', 'rebar_exposure', 'spalling')
 
 PALETTE = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 255], [255, 0, 255]]
@@ -157,26 +157,26 @@ class Concrete_Damage_Dataset_as_Cityscapes:
         label = self.prepare_seg_mask(idx)
 
         
-        f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
+        # f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
             
-        img_h, img_w = label.shape
+        # img_h, img_w = label.shape
 
-        image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
-        label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
+        # image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
+        # label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
         
 
-        img_h_rsz, img_w_rsz = label.shape
+        # img_h_rsz, img_w_rsz = label.shape
 
-        h_off = random.randint(0, img_h_rsz - img_h)
-        w_off = random.randint(0, img_w_rsz - img_w)
-        #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
-        image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
-        label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        # h_off = random.randint(0, img_h_rsz - img_h)
+        # w_off = random.randint(0, img_w_rsz - img_w)
+        # #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
+        # image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        # label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
         
         
-        if np.random.uniform() > 0.5 : 
-            image = image*np.random.uniform(0.75, 1.25)
-        
+        # if np.random.uniform() > 0.5 : 
+        #     image = image*np.random.uniform(0.75, 1.25)
+           
         
         data['image'] = image 
         data['segmentation_mask'] = label

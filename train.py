@@ -13,8 +13,6 @@ from loss import compute_loss
 from optim import load_optimizer
 import time
 
-
-
 def distributed_train_step(dist_inputs, mirrored_strategy):
     """
     """
@@ -89,7 +87,7 @@ def train_model(model, train_dataset, optimizer,
         
             train_step(batch)
             
-            if step % 100 == 0 : 
+            if step % 5 == 1 : 
                 print(log_template.format(epoch,
                                         epochs,
                                         step+1,
@@ -98,11 +96,11 @@ def train_model(model, train_dataset, optimizer,
                                         train_accuracy.result()*100,
                                         train_iou.result()*100
                                         ))
-        #tf.saved_model.save(my_model,os.path.join(model_save_to))
-            model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
+                                        
         if epoch % 5 == 0 :
             model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
-
+        if epoch % 300 == 0 :
+            model.save(os.path.join(model_save_to))#,save_traces = False)
 
 def dist_train(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
@@ -138,9 +136,9 @@ def dist_train(model, train_dataset, optimizer,
                                                     ((680, 680, 3), (680, 680, 1)))
 
     tf_train_dataset_generator = tf_train_dataset_generator.batch(batch_size)
-    # options = tf.data.Options()
-    # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-    # tf_train_dataset_generator = tf_train_dataset_generator.with_options(options)
+    options = tf.data.Options()
+    options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+    tf_train_dataset_generator = tf_train_dataset_generator.with_options(options)
     dist_train_dataset = mirrored_strategy.experimental_distribute_dataset(tf_train_dataset_generator)
 
     train_dataset_iterator = iter(dist_train_dataset)
@@ -150,7 +148,7 @@ def dist_train(model, train_dataset, optimizer,
         for step in range(1, num_steps+1):
             distributed_train_step(next(train_dataset_iterator), mirrored_strategy)
         
-            if step % 2 == 0 : 
+            if step % 5 == 1 : 
                 print(log_template.format(epoch,
                                         epochs,
                                         step+1,
@@ -159,12 +157,11 @@ def dist_train(model, train_dataset, optimizer,
                                         train_accuracy.result()*100,
                                         train_iou.result()*100
                                         ))
-        #tf.saved_model.save(my_model,os.path.join(model_save_to))
-        #model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
+
         if epoch % 5 == 0 :
             model.save_weights(os.path.join(model_save_to, 'epoch_{}.h5'.format(epoch)))
-        if epoch % 325 == 0 :
-            model.save(os.path.join(model_save_to),options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))#,save_traces = False)
+        if epoch % 300 == 0 :
+            model.save(os.path.join(model_save_to))#,save_traces = False)
 if __name__ == "__main__" : 
 
     
@@ -222,10 +219,10 @@ if __name__ == "__main__" :
         train_model(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
-                num_steps, log_template, model_save_to,resume_from)
+                num_steps, log_template, model_save_to,resume_from )
 
     elif num_gpu >= 2: 
         dist_train(model, train_dataset, optimizer,
                 train_loss, train_accuracy, train_iou,
                 batch_size, class_weight, epochs, 
-                num_steps, log_template, model_save_to)
+                num_steps, log_template, model_save_to )

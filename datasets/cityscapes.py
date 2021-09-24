@@ -11,18 +11,18 @@ from glob import glob
 
 
 
-physical_devices = tf.config.list_physical_devices('GPU')
-try:
-   tf.config.experimental.set_memory_growth(physical_devices[0], True)
-   tf.config.experimental.set_memory_growth(physical_devices[1], True)
-   tf.config.experimental.set_memory_growth(physical_devices[2], True)
-   tf.config.experimental.set_memory_growth(physical_devices[3], True)
-except:
-  # Invalid device or cannot modify virtual devices once initialized.
-  pass
+# physical_devices = tf.config.list_physical_devices('GPU')
+# try:
+#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[1], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[2], True)
+#    tf.config.experimental.set_memory_growth(physical_devices[3], True)
+# except:
+#   # Invalid device or cannot modify virtual devices once initialized.
+#   pass
 
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+# import os
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 CLASSES = ('road', 'sidewalk', 'building', 'wall', 
             'fence', 'pole', 'traffic light', 'traffic sign',
             'vegetation', 'terrain', 'sky', 'person', 
@@ -37,7 +37,7 @@ PALETTE = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156],
 
 
 
-class CityscapesDatset: 
+class CityscapesDatset:
     
     """
     Cityscapes dataset.
@@ -187,10 +187,29 @@ class CityscapesDatset:
         
         if np.random.uniform() > 0.5 : 
             image = image*np.random.uniform(0.75, 1.25)
-        
+         
         
         data['image'] = image 
         data['segmentation_mask'] = label
         
         return data
+
+def test(): 
+    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+    cityscapes_dataset = CityscapesDatset(data_dir)
+
+    cityscapes_dataset._get_class_weight(data_dir)
+    
+    
+
+    
+    
+
+        
+    
+    return None 
+
+if __name__ == "__main__" : 
+    test()
+
         

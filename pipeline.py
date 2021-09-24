@@ -12,10 +12,10 @@ def normalize(image, label):
 
     """
     image = tf.math.subtract(image, [72.39239876, 82.90891754, 73.15835921])
-    
+    #print(image)
     return image, label
 
-#@tf.function
+@tf.function
 def load_image_train(datapoint, size=(680,680)):
 
     """
@@ -39,14 +39,11 @@ def load_image_train(datapoint, size=(680,680)):
     if tf.random.uniform(()) > 0.5:
         image = tf.image.flip_left_right(image)
         label = tf.image.flip_left_right(label)
-    
-        
 
     image, label = normalize(image, label)
 
     return image, label
 
-#@tf.function
 def load_image_test(datapoint, size=(680,680), is_normalize = True):
 
     """
@@ -164,7 +161,7 @@ class _batch_generator:
         return images, labels
 
 def test(): 
-    data_dir = '/home/sss/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
+    data_dir = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes'
     cityscapes_dataset = CityscapesDatset(data_dir)
     TRAIN_LENGTH = len(cityscapes_dataset)
     print("Length of the dataset : {}".format(TRAIN_LENGTH))

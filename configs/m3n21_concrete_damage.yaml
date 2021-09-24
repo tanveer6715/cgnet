@@ -4,7 +4,7 @@
 
 DATA_DIR : '/home/soojin/UOS-SSaS Dropbox/05. Data/02. Training&Test/concrete_damage_autocon/as_cityscape'
 RESUME_FROM : null
-MODEL_SAVE_TO : '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.21 for test'
+MODEL_SAVE_TO : '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.08.20 concrete'
 
 DATASET : 'Concrete_Damage_Cityscapes'
 IMG_WIDTH : 680
@@ -13,7 +13,7 @@ NUM_CLASSES : 5
 IGNORE_CLASS : 255
 
 BATCH_SIZE : 16 # If distributed training enabled, BATCH_SIZE used for global batch size
-EPOCHS : 325
+EPOCHS : 20
 
 NUM_GPU : 4 # NUM_GPU more than 1 uses distributed training
 
