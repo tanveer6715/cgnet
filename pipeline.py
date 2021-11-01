@@ -12,7 +12,9 @@ def normalize(image, label):
 
     """
     image = tf.math.subtract(image, [72.39239876, 82.90891754, 73.15835921])
-    #print(image)
+    # #print(image)
+    #image = ((tf.cast(image, tf.float32) / 255.0) - 0.299) / 0.188
+    # image = (tf.cast(image, tf.float32) - 114.495) / 57.63
     return image, label
 
 @tf.function
@@ -43,7 +45,7 @@ def load_image_train(datapoint, size=(680,680)):
     image, label = normalize(image, label)
 
     return image, label
-
+@tf.function
 def load_image_test(datapoint, size=(680,680), is_normalize = True):
 
     """

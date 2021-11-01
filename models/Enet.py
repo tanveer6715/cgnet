@@ -7,7 +7,7 @@ from tensorflow.keras.layers import (
     ZeroPadding2D, BatchNormalization,
     Permute, SpatialDropout2D, Activation, Input
 )
-
+from tensorflow.keras.layers.experimental import SyncBatchNormalization
 #code reference: https://github.com/soumik12345/Enet-Tensorflow/tree/master/src
 
 def initial_block(input_tensor, filters = 16):
@@ -65,7 +65,7 @@ def bottleneck_block_encoder(input_tensor, output_channels, scale = 4, assymetri
         strides = (stride, stride),
         use_bias = False
     )(branch_2)
-    branch_2 = BatchNormalization(momentum = 0.1)(branch_2)
+    branch_2 = SyncBatchNormalization(momentum = 0.1)(branch_2)
     branch_2 = PReLU(shared_axes=[1, 2])(branch_2)
 
     # Middle Convolutional Block
@@ -76,12 +76,12 @@ def bottleneck_block_encoder(input_tensor, output_channels, scale = 4, assymetri
         branch_2 = Conv2D(n_filters, (assymetric, 1), padding = 'same')(branch_2)
     elif dilated:
         branch_2 = Conv2D(n_filters, (3, 3), padding = 'same', dilation_rate=(dilated, dilated))(branch_2)
-    branch_2 = BatchNormalization(momentum = 0.1)(branch_2)
+    branch_2 = SyncBatchNormalization(momentum = 0.1)(branch_2)
     branch_2 = PReLU(shared_axes=[1, 2])(branch_2)
 
     # 1x1 Conv Block
     branch_2 = Conv2D(output_channels, (1, 1), use_bias = False)(branch_2)
-    branch_2 = BatchNormalization(momentum = 0.1)(branch_2)
+    branch_2 = SyncBatchNormalization(momentum = 0.1)(branch_2)
     branch_2 = SpatialDropout2D(dropout)(branch_2)
 
     # Branch_1 + Branch_2
@@ -109,7 +109,7 @@ def bottleneck_block_decoder(input_tensor, output_channels, scale = 4, upsample 
 
     # 1x1 conv block
     branch_1 = Conv2D(n_filters, (1, 1), use_bias=False)(branch_1)
-    branch_1 = BatchNormalization(momentum = 0.1)(branch_1)
+    branch_1 = SyncBatchNormalization(momentum = 0.1)(branch_1)
     branch_1 = Activation('relu')(branch_1)
 
     # Mid Convolutional Block
@@ -117,7 +117,7 @@ def bottleneck_block_decoder(input_tensor, output_channels, scale = 4, upsample 
         branch_1 = Conv2DTranspose(filters=n_filters, kernel_size=(3, 3), strides=(2, 2), padding='same')(branch_1)
     else:
         branch_1 = Conv2D(n_filters, (3, 3), padding='same', use_bias=True)(branch_1)
-    branch_1 = BatchNormalization(momentum=0.1)(branch_1)
+    branch_1 = SyncBatchNormalization(momentum=0.1)(branch_1)
     branch_1 = Activation('relu')(branch_1)
 
     # 1x1 conv block
@@ -128,7 +128,7 @@ def bottleneck_block_decoder(input_tensor, output_channels, scale = 4, upsample 
 
     if input_tensor.get_shape()[-1] != output_channels or upsample:
         branch_2 = Conv2D(output_channels, (1, 1), padding='same', use_bias=False)(branch_2)
-        branch_2 = BatchNormalization(momentum=0.1)(branch_2)
+        branch_2 = SyncBatchNormalization(momentum=0.1)(branch_2)
         if upsample and reverse_module is True:
             branch_2 = UpSampling2D(size=(2, 2))(branch_2)
     
@@ -136,7 +136,7 @@ def bottleneck_block_decoder(input_tensor, output_channels, scale = 4, upsample 
     if upsample and reverse_module is False:
         decoder = branch_1
     else:
-        branch_1 = BatchNormalization(momentum=0.1)(branch_1)
+        branch_1 = SyncBatchNormalization(momentum=0.1)(branch_1)
         decoder = add([branch_1, branch_2])
         decoder = Activation('relu')(decoder)
     
@@ -212,7 +212,7 @@ def section_5(input_tensor):
     x = bottleneck_block_decoder(x, 16)
     return x
 
-def Enet(input_shape = (680, 680, 3), output_channels = 5):
+def Enet(input_shape = (680,680, 3), output_channels = 5):
     '''The Enet architecture as per the Enet Paper
     Reference: https://arxiv.org/pdf/1606.02147.pdf
     Params:
@@ -233,8 +233,12 @@ def Enet(input_shape = (680, 680, 3), output_channels = 5):
     )(x)
     
     model = Model(input_tensor, output_tennsor)
-    return model
-
+    return model  
 # model =Enet()
-# model.build((1,680,680,3))
+# # model.build((1,360,640,3))
 # model.summary()
+
+
+# path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/model_size/'
+
+# tf.keras.models.save_model(model,path)

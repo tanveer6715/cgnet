@@ -6,7 +6,7 @@ from tqdm import tqdm
 from datasets.concrete_damage_as_cityscapes import Concrete_Damage_Dataset_as_Cityscapes
 from datasets.cityscapes import CityscapesDatset
 import cv2
-
+import time
 
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -24,7 +24,7 @@ DATA_DIR = '/home/soojin/UOS-SSaS Dropbox/05. Data/00. Benchmarks/01. cityscapes
 cityscapes_dataset = CityscapesDatset(DATA_DIR, data_type = 'val')
 TEST_LENGTH = len(cityscapes_dataset)
 print("Length of the dataset : {}".format(TEST_LENGTH))
-model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.09.01 tflite_testing/'
+model_weight_path = '/home/soojin/UOS-SSaS Dropbox/05. Data/03. Checkpoints/#cgnet/2021.10.01 deeplab_cityscapes/'
 
 model =keras.models.load_model(model_weight_path)
 
@@ -38,7 +38,10 @@ def test_step(model, images, labels):
     
     
 
+    start = time.time()
     predictions = model(images)
+    end = time.time()
+    tf.print("--- %s miliseconds ---" % ((end - start)*1000))
     
     per_example_loss = loss_object(labels, predictions)
 

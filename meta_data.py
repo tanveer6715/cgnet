@@ -4,13 +4,13 @@ from tflite_support.metadata_writers import image_segmenter
 from tflite_support.metadata_writers import writer_utils
 
 ImageSegmenterWriter = image_segmenter.MetadataWriter
-_MODEL_PATH = "/home/soojin/cgnet/cgnet_cityscapes.tflite"
+_MODEL_PATH = "/home/soojin/cgnet/esnet_trained.tflite"
 # Task Library expects label files that are in the same format as the one below.
-_LABEL_FILE = "/home/soojin/cgnet/label.txt"
-_SAVE_TO_PATH = '/home/soojin/cgnet/cgnet_metadata.tflite'
+_LABEL_FILE = "/home/soojin/cgnet/datasets/label.txt"
+_SAVE_TO_PATH = '/home/soojin/cgnet/esnettrained_metadata.tflite'
 
 _INPUT_NORM_STD = 127.5
-
+_INPUT_NORM_MEAN = 127.5
 # Create the metadata writer.
 writer = ImageSegmenterWriter.create_for_inference(
     writer_utils.load_file(_MODEL_PATH), [_INPUT_NORM_MEAN], [_INPUT_NORM_STD],

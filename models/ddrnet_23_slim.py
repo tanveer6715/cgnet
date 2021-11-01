@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 import tensorflow.keras.models as models
-
+from tensorflow.keras.layers.experimental import SyncBatchNormalization
 #code reference:https://github.com/hamidriasat/DDRNets/blob/9872cf900c8f0d1e14f83ea2cd11946948643abe/ddrnet_23_slim.py#L181
 
 """
@@ -20,11 +20,11 @@ def basic_block(x_in, planes, stride=1, downsample=None, no_relu=False):
     residual = x_in
 
     x = conv3x3(planes, stride)(x_in)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
 
     x = conv3x3(planes,)(x)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
 
     if downsample is not None:
         residual = downsample
@@ -45,15 +45,15 @@ def bottleneck_block(x_in, planes, stride=1, downsample=None, no_relu=True):
     residual = x_in
 
     x = layers.Conv2D(filters=planes, kernel_size=(1,1), use_bias=False)(x_in)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
 
     x = layers.Conv2D(filters=planes, kernel_size=(3,3), strides=stride, padding="same",use_bias=False)(x)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
 
     x = layers.Conv2D(filters=planes* bottleneck_expansion, kernel_size=(1,1), use_bias=False)(x)
-    x= layers.BatchNormalization()(x)
+    x= SyncBatchNormalization()(x)
 
     if downsample is not None:
         residual = downsample
@@ -80,7 +80,7 @@ def DAPPPM(x_in, branch_planes, outplanes):
     x_list = []
 
     # y1
-    scale0 = layers.BatchNormalization()(x_in)
+    scale0 = SyncBatchNormalization()(x_in)
     scale0 = layers.Activation("relu")(scale0)
     scale0 = layers.Conv2D(branch_planes, kernel_size=(1,1), use_bias=False, )(scale0)
     x_list.append(scale0)
@@ -90,7 +90,7 @@ def DAPPPM(x_in, branch_planes, outplanes):
         temp = layers.AveragePooling2D(pool_size=(kernal_sizes_height[i],kernal_sizes_width[i]),
                                        strides=(stride_sizes_height[i],stride_sizes_width[i]),
                                        padding="same")(x_in)
-        temp = layers.BatchNormalization()(temp)
+        temp = SyncBatchNormalization()(temp)
         temp = layers.Activation("relu")(temp)
         # then apply 1*1 conv
         temp = layers.Conv2D(branch_planes, kernel_size=(1, 1), use_bias=False, )(temp)
@@ -98,7 +98,7 @@ def DAPPPM(x_in, branch_planes, outplanes):
         temp = tf.image.resize(temp, size=(height,width), )
         # add current and previous layer output
         temp = layers.Add()([temp, x_list[i]])
-        temp = layers.BatchNormalization()(temp)
+        temp = SyncBatchNormalization()(temp)
         temp = layers.Activation("relu")(temp)
         # at the end apply 3*3 conv
         temp = layers.Conv2D(branch_planes, kernel_size=(3, 3), use_bias=False, padding="same")(temp)
@@ -108,11 +108,11 @@ def DAPPPM(x_in, branch_planes, outplanes):
     # concatenate all
     combined = layers.concatenate(x_list, axis=-1)
 
-    combined = layers.BatchNormalization()(combined)
+    combined = SyncBatchNormalization()(combined)
     combined = layers.Activation("relu")(combined)
     combined = layers.Conv2D(outplanes, kernel_size=(1, 1), use_bias=False, )(combined)
 
-    shortcut = layers.BatchNormalization()(x_in)
+    shortcut = SyncBatchNormalization()(x_in)
     shortcut = layers.Activation("relu")(shortcut)
     shortcut = layers.Conv2D(outplanes, kernel_size=(1, 1), use_bias=False, )(shortcut)
 
@@ -126,11 +126,11 @@ Segmentation head
 3*3 -> 1*1 -> rescale
 """
 def segmentation_head(x_in, interplanes, outplanes, scale_factor=None):
-    x = layers.BatchNormalization()(x_in)
+    x = SyncBatchNormalization()(x_in)
     x = layers.Activation("relu")(x)
     x = layers.Conv2D(interplanes, kernel_size=(3, 3), use_bias=False, padding="same")(x)
 
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
     x = layers.Conv2D(outplanes, kernel_size=(1, 1), use_bias=range, padding="valid")(x)
 
@@ -156,7 +156,7 @@ def make_layer(x_in, block, inplanes, planes, blocks_num, stride=1, expansion=1)
     downsample = None
     if stride != 1 or inplanes != planes * expansion:
         downsample = layers.Conv2D(((planes * expansion)), kernel_size=(1, 1),strides=stride, use_bias=False)(x_in)
-        downsample = layers.BatchNormalization()(downsample)
+        downsample = SyncBatchNormalization()(downsample)
         downsample = layers.Activation("relu")(downsample)
 
     x = block(x_in, planes, stride, downsample)
@@ -180,7 +180,7 @@ head_planes: segmentation head dimensions
 scale_factor: scale output factor
 augment: whether auxiliary loss is added or not
 """
-def ddrnet_23_slim(input_shape=[680,680,3], layers_arg=[2, 2, 2, 2], num_classes=5, planes=32, spp_planes=128,
+def ddrnet_23_slim(input_shape=((680,680,3)), layers_arg=[2, 2, 2, 2], num_classes=5, planes=32, spp_planes=128,
                    head_planes=64, scale_factor=8,augment=False):
 
     x_in = layers.Input(input_shape)
@@ -194,11 +194,11 @@ def ddrnet_23_slim(input_shape=[680,680,3], layers_arg=[2, 2, 2, 2], num_classes
 
     # 1 -> 1/2 first conv layer
     x = layers.Conv2D(planes, kernel_size=(3, 3),strides=2, padding='same')(x_in)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
     # 1/2 -> 1/4 second conv layer
     x = layers.Conv2D(planes, kernel_size=(3, 3), strides=2, padding='same')(x)
-    x = layers.BatchNormalization()(x)
+    x = SyncBatchNormalization()(x)
     x = layers.Activation("relu")(x)
 
     # layer 1
@@ -232,12 +232,12 @@ def ddrnet_23_slim(input_shape=[680,680,3], layers_arg=[2, 2, 2, 2], num_classes
     # High to Low
     x_temp = layers.Activation("relu")(x_)
     x_temp =  layers.Conv2D(planes*4, kernel_size=(3, 3), strides=2, padding='same', use_bias=False)(x_temp)
-    x_temp = layers.BatchNormalization()(x_temp)
+    x_temp = SyncBatchNormalization()(x_temp)
     x = layers.Add()([x, x_temp])
     # Low to High
     x_temp = layers.Activation("relu")(layers_inside[2])
     x_temp = layers.Conv2D(highres_planes, kernel_size=(1,1), use_bias=False)(x_temp)
-    x_temp = layers.BatchNormalization()(x_temp)
+    x_temp = SyncBatchNormalization()(x_temp)
     x_temp = tf.image.resize(x_temp, (height_output, width_output)) # 1/16 -> 1/8
     x_ = layers.Add()([x_, x_temp]) # next high branch input, 1/8
 
@@ -257,15 +257,15 @@ def ddrnet_23_slim(input_shape=[680,680,3], layers_arg=[2, 2, 2, 2], num_classes
     # High to low
     x_temp = layers.Activation("relu")(x_)
     x_temp = layers.Conv2D(planes * 4, kernel_size=(3, 3), strides=2, padding='same', use_bias=False)(x_temp)
-    x_temp = layers.BatchNormalization()(x_temp)
+    x_temp = SyncBatchNormalization()(x_temp)
     x_temp = layers.Activation("relu")(x_temp)
     x_temp = layers.Conv2D(planes * 8, kernel_size=(3, 3), strides=2, padding='same', use_bias=False)(x_temp)
-    x_temp = layers.BatchNormalization()(x_temp)
+    x_temp = SyncBatchNormalization()(x_temp)
     x = layers.Add()([x, x_temp])
     # Low to High
     x_temp = layers.Activation("relu")(layers_inside[3])
     x_temp = layers.Conv2D(highres_planes, kernel_size=(1, 1), use_bias=False)(x_temp)
-    x_temp = layers.BatchNormalization()(x_temp)
+    x_temp = SyncBatchNormalization()(x_temp)
     x_temp = tf.image.resize(x_temp, (height_output, width_output))
     x_ = layers.Add()([x_, x_temp])
 
@@ -308,5 +308,5 @@ def ddrnet_23_slim(input_shape=[680,680,3], layers_arg=[2, 2, 2, 2], num_classes
 
     return model
 
-model = ddrnet_23_slim()
+# model = ddrnet_23_slim()
 # model.summary()
