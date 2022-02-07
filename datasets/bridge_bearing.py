@@ -5,9 +5,8 @@ import random
 import tensorflow as tf
 import os.path as osp 
 import numpy as np 
-#import cityscapesscripts.helpers.labels as CSLabels # to be deprecated
+from glob import glob
 
-from glob import glob 
 
 # physical_devices = tf.config.list_physical_devices('GPU')
 # try:
@@ -20,15 +19,15 @@ from glob import glob
 #   pass
 # import os
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-CLASSES = ('background', 'crack', 'efflorescence', 'rebar_exposure', 'spalling')
+#CLASSES = ('background', 'crack', 'corrosion', 'spalling')
+#CLASSES = ('background', 'corrosion')
 
-# PALETTE = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 255], [255, 0, 255]]
+CLASSES = ('crack', 'corrosion', 'spalling')
 
-PALETTE = [[255,255,255], [0, 0, 255], [0, 255, 0], [255, 255, 0], [255, 0, 255]]
+PALETTE = [[255, 255, 255], [0, 0, 0],[127,191,127]]
+#PALETTE = [[255,255,255],[127,127,191],[127,191,127],[127,191,191],[0,0,0], [255,255,0]]
 
-
-
-class Concrete_Damage_Dataset_as_Cityscapes: 
+class Bridge_Bearing_Dataset_as_Cityscapes: 
     
     """
     Cityscapes dataset.
@@ -75,7 +74,7 @@ class Concrete_Damage_Dataset_as_Cityscapes:
             for file in files:
                 if file.endswith(self.img_suffix):
                     img_list.append(file)
-            #print(img_list)
+
 
         for img in img_list:
             img_info = dict(filename=img)
@@ -100,7 +99,7 @@ class Concrete_Damage_Dataset_as_Cityscapes:
         img_path = osp.join(self.img_dir, img_filename)
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+      
         return img
 
     def prepare_seg_mask(self, idx): 
@@ -121,21 +120,14 @@ class Concrete_Damage_Dataset_as_Cityscapes:
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
 
         return seg
-
-    # @staticmethod
-    # def _convert_to_label_id(seg):
-    #     """Convert trainId to id for cityscapes."""
-    #     seg_copy = seg.copy()
-    #     for label in CSLabels.labels:
-    #         # print(label.name)
-    #         seg_copy[seg == label.id] = label.trainId
-    #     return seg_copy
-            
     
+
+
     def __len__ (self) : 
 
         return len(self.img_infos)
 
+    
     def __getitem__(self, idx):
         
         """Get training/test data after pipeline.
@@ -159,29 +151,28 @@ class Concrete_Damage_Dataset_as_Cityscapes:
         label = self.prepare_seg_mask(idx)
 
         
-        # f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
+        f_scale = 1 + random.randint(0, 5) / 10.0  #random resize between 0.5 and 2 
             
-        # img_h, img_w = label.shape
+        img_h, img_w = label.shape
 
-        # image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
-        # label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
+        image = cv2.resize(image, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_LINEAR)
+        label = cv2.resize(label, None, fx=f_scale, fy=f_scale, interpolation = cv2.INTER_NEAREST)
         
 
-        # img_h_rsz, img_w_rsz = label.shape
+        img_h_rsz, img_w_rsz = label.shape
 
-        # h_off = random.randint(0, img_h_rsz - img_h)
-        # w_off = random.randint(0, img_w_rsz - img_w)
-        # #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
-        # image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
-        # label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        h_off = random.randint(0, img_h_rsz - img_h)
+        w_off = random.randint(0, img_w_rsz - img_w)
+        #roi = cv2.Rect(w_off, h_off, self.crop_w, self.crop_h);
+        image = np.asarray(image[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
+        label = np.asarray(label[h_off : h_off+img_h, w_off : w_off+img_w], np.float32)
         
         
-        # if np.random.uniform() > 0.5 : 
-        #     image = image*np.random.uniform(0.75, 1.25)
-           
-        
+        if np.random.uniform() > 0.5 : 
+            image = image*np.random.uniform(0.75, 1.25)
+
+
         data['image'] = image 
         data['segmentation_mask'] = label
-       
-        return data
         
+        return data

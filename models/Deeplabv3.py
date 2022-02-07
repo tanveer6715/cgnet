@@ -82,7 +82,7 @@ def deeplabv3_plus(shape):
     x = SqueezeAndExcite(x)
 
     x = UpSampling2D((4, 4), interpolation="bilinear")(x)
-    x = Conv2D(19, 1)(x)
+    x = Conv2D(5, 1)(x)
     #x = Activation("softmax")(x)
 
     model = Model(inputs, x)

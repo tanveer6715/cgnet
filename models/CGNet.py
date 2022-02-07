@@ -196,7 +196,7 @@ class InputInjection(Model):
 
 
 class CGNet(Model):
-    def __init__(self, num_classes=5, M= 3, N= 21, dropout_flag = False):
+    def __init__(self, num_classes=3, M= 3, N= 21, dropout_flag = False):
         """
 
         """
@@ -301,11 +301,11 @@ class CGNet(Model):
     def model(self):
         input = tf.keras.layers.Input(shape=(680,680,3))
         return Model(inputs=[input], outputs=self.call(input))
-model = CGNet()
+# model = CGNet()
 
-model_functional = model.model()
+# model_functional = model.model()
 
-model_functional.summary()
+# model_functional.summary()
 
 
 # from builtins import input
